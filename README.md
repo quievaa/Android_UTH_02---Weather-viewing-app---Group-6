@@ -40,100 +40,103 @@ Dự án được thực hiện trong học phần **Mobile Device Programming**
 
 Để đảm bảo tiến độ phát triển dự án và nâng cao hiệu quả làm việc nhóm, các thành viên được phân công thực hiện các nhiệm vụ sau:
 
-## Member 1 – Project Management & UI Development
-
-### Role
-
-Quản lý tiến độ dự án và phát triển giao diện người dùng.
-
-### Responsibilities
-
-* Lập kế hoạch và theo dõi tiến độ dự án.
-* Thiết kế giao diện theo Material Design.
-* Xây dựng các màn hình chính của ứng dụng.
-* Điều hướng giữa các màn hình.
-* Kiểm tra tính nhất quán của giao diện.
-* Hỗ trợ tích hợp các chức năng.
+Đây là bản phân công đã chỉnh sửa để **cả 6 thành viên đều có phần lập trình riêng**, phù hợp cho báo cáo và bảo vệ đồ án.
 
 ---
 
-## Member 2 – API Integration Engineer
+## Member 1 – UI & Navigation Developer
 
-### Role
+**Role**
+Phát triển giao diện người dùng và điều hướng ứng dụng.
 
-Phát triển chức năng kết nối và giao tiếp với dịch vụ thời tiết.
+**Responsibilities**
 
-### Responsibilities
+* Thiết kế giao diện theo Material Design.
+* Xây dựng các màn hình chính của ứng dụng.
+* Cài đặt Navigation giữa các màn hình.
+* Thiết kế giao diện Responsive cho nhiều kích thước màn hình.
+* Tích hợp giao diện với dữ liệu từ các module khác.
+* Kiểm tra và chỉnh sửa giao diện sau khi tích hợp.
+
+---
+
+## Member 2 – API Integration Developer
+
+**Role**
+Phát triển chức năng kết nối với dịch vụ thời tiết.
+
+**Responsibilities**
 
 * Tích hợp OpenWeatherMap API.
 * Thực hiện HTTP Request và nhận dữ liệu từ API.
 * Quản lý API Key.
-* Kiểm tra lỗi kết nối mạng.
-* Đảm bảo dữ liệu được cập nhật chính xác.
+* Xử lý lỗi kết nối mạng.
+* Kiểm tra dữ liệu trả về từ API.
+* Hỗ trợ tích hợp API với các module khác.
 
 ---
 
-## Member 3 – Weather Data Processing Engineer
+## Member 3 – Weather Data Processing Developer
 
-### Role
+**Role**
+Phát triển chức năng xử lý dữ liệu thời tiết.
 
-Xử lý dữ liệu thời tiết và hiển thị thông tin.
-
-### Responsibilities
+**Responsibilities**
 
 * Phân tích dữ liệu JSON.
 * Xây dựng các lớp Model.
 * Hiển thị thông tin thời tiết hiện tại.
-* Xây dựng chức năng dự báo nhiều ngày.
-* Cập nhật dữ liệu lên giao diện.
+* Xây dựng chức năng dự báo thời tiết nhiều ngày.
+* Chuyển đổi dữ liệu để hiển thị lên giao diện.
+* Tối ưu việc xử lý dữ liệu.
 
 ---
 
-## Member 4 – Location & Search Engineer
+## Member 4 – Location & Search Developer
 
-### Role
-
+**Role**
 Phát triển chức năng tìm kiếm và định vị.
 
-### Responsibilities
+**Responsibilities**
 
-* Tìm kiếm thời tiết theo tên thành phố.
+* Xây dựng chức năng tìm kiếm thời tiết theo tên thành phố.
 * Lấy vị trí hiện tại bằng GPS.
-* Hiển thị thời tiết theo vị trí.
+* Hiển thị thời tiết theo vị trí hiện tại.
 * Quản lý quyền truy cập Location.
 * Cập nhật dữ liệu khi vị trí thay đổi.
+* Kết nối chức năng tìm kiếm với API.
 
 ---
 
-## Member 5 – Local Data Engineer
+## Member 5 – Local Storage Developer
 
-### Role
+**Role**
+Phát triển chức năng lưu trữ dữ liệu cục bộ.
 
-Quản lý dữ liệu được lưu trên thiết bị.
+**Responsibilities**
 
-### Responsibilities
-
-* Lưu danh sách địa điểm yêu thích.
+* Xây dựng chức năng lưu danh sách địa điểm yêu thích.
 * Lưu lịch sử tìm kiếm.
 * Quản lý SharedPreferences hoặc DataStore.
-* Đồng bộ dữ liệu cục bộ.
-* Quản lý các thiết lập của ứng dụng.
+* Đồng bộ dữ liệu cục bộ với giao diện.
+* Quản lý các thiết lập lưu trữ của ứng dụng.
+* Kiểm tra việc lưu và đọc dữ liệu.
 
 ---
 
-## Member 6 – Testing & Quality Assurance Engineer
+## Member 6 – Settings & Integration Developer
 
-### Role
+**Role**
+Phát triển chức năng cài đặt và tích hợp hệ thống.
 
-Kiểm thử và hoàn thiện hệ thống.
+**Responsibilities**
 
-### Responsibilities
-
-* Kiểm thử các chức năng của ứng dụng.
-* Tích hợp các module.
-* Phát hiện và sửa lỗi.
-* Tối ưu hiệu năng.
-* Chuẩn bị tài liệu và video demo.
+* Xây dựng màn hình **Settings** của ứng dụng.
+* Phát triển chức năng chuyển đổi đơn vị nhiệt độ (°C / °F).
+* Xây dựng chức năng làm mới (Refresh) dữ liệu thời tiết.
+* Xây dựng màn hình Splash Screen và xử lý trạng thái Loading/Error.
+* Tích hợp các module thành một ứng dụng hoàn chỉnh.
+* Kiểm thử, sửa lỗi và tối ưu hiệu năng của ứng dụng.
 
 ---
 
