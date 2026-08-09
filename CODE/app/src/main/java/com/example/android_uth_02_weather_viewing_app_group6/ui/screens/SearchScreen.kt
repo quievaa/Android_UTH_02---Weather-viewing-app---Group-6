@@ -27,9 +27,12 @@ import androidx.compose.ui.unit.dp
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.CityResultCard
 
 @Composable
-fun SearchScreen(contentPadding: PaddingValues) {
+fun SearchScreen(
+    contentPadding: PaddingValues,
+    onCitySelected: (String) -> Unit,
+) {
     var query by remember { mutableStateOf("") }
-    val suggestions = listOf("Da Nang", "Ha Noi", "Can Tho", "Tokyo", "Singapore")
+    val suggestions = listOf("Ho Chi Minh", "Da Nang", "Ha Noi", "Can Tho", "Tokyo", "Singapore")
 
     LazyColumn(
         contentPadding = contentPadding,
@@ -43,7 +46,7 @@ fun SearchScreen(contentPadding: PaddingValues) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("Search city") },
+                label = { Text("Tìm thành phố") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -52,17 +55,24 @@ fun SearchScreen(contentPadding: PaddingValues) {
 
         item {
             Button(
-                onClick = { },
+                onClick = { onCitySelected(query.trim().ifBlank { "Ho Chi Minh" }) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Default.LocationOn, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Use current location")
+                Text("Tìm kiếm thành phố")
             }
         }
 
-        items(suggestions.filter { it.contains(query, ignoreCase = true) || query.isBlank() }) { city ->
-            CityResultCard(city)
+        items(
+            suggestions.filter {
+                it.contains(query, ignoreCase = true) || query.isBlank()
+            }
+        ) { city ->
+            CityResultCard(
+                city = city,
+                onClick = { onCitySelected(city) },
+            )
         }
     }
 }
