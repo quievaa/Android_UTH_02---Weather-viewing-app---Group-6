@@ -67,8 +67,14 @@ fun HourChip(time: String, temperature: String) {
 }
 
 @Composable
-fun CityResultCard(city: String) {
-    ElevatedCard(shape = RoundedCornerShape(8.dp)) {
+fun CityResultCard(
+    city: String,
+    onClick: () -> Unit,
+) {
+    ElevatedCard(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+    ) {
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -78,12 +84,12 @@ fun CityResultCard(city: String) {
         ) {
             Column {
                 Text(city, fontWeight = FontWeight.SemiBold)
-                Text("Tap to view current weather", style = MaterialTheme.typography.bodyMedium)
+                Text("Nhấn để xem thời tiết hiện tại", style = MaterialTheme.typography.bodyMedium)
             }
             FilterChip(
                 selected = false,
-                onClick = { },
-                label = { Text("Add") },
+                onClick = onClick,
+                label = { Text("Xem") },
                 leadingIcon = { Icon(Icons.Default.Favorite, contentDescription = null) },
             )
         }
