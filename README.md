@@ -6,7 +6,7 @@
 
 Ứng dụng cho phép người dùng tìm kiếm thành phố, xem thời tiết hiện tại, theo dõi dự báo thời tiết trong nhiều ngày tiếp theo và lưu các địa điểm yêu thích để truy cập nhanh. Ngoài ra, ứng dụng còn hỗ trợ lấy vị trí hiện tại của thiết bị để hiển thị thông tin thời tiết tương ứng mà không cần nhập tên địa điểm.
 
-Dữ liệu thời tiết được lấy từ **OpenWeatherMap API** thông qua kết nối Internet và được xử lý để hiển thị dưới dạng trực quan, dễ đọc và thân thiện với người dùng.
+Dữ liệu thời tiết được lấy từ **Open-Meteo API** thông qua kết nối Internet và được xử lý để hiển thị dưới dạng trực quan, dễ đọc và thân thiện với người dùng.
 
 Dự án được thực hiện trong học phần **Mobile Device Programming**, với mục tiêu giúp sinh viên vận dụng kiến thức về phát triển ứng dụng Android bằng **Kotlin**, thiết kế giao diện hiện đại, làm việc với REST API và quản lý dữ liệu trên thiết bị di động.
 
@@ -28,7 +28,7 @@ Dự án được thực hiện trong học phần **Mobile Device Programming**
 
 **Architecture:** MVVM (Model – View – ViewModel)
 
-**API Service:** OpenWeatherMap API
+**API Service:** Open-Meteo API
 
 **Minimum SDK:** Android 8.0 (API 26)
 
@@ -67,7 +67,7 @@ Phát triển chức năng kết nối với dịch vụ thời tiết.
 
 **Responsibilities**
 
-* Tích hợp OpenWeatherMap API.
+* Tích hợp Open-Meteo API.
 * Thực hiện HTTP Request và nhận dữ liệu từ API.
 * Quản lý API Key.
 * Xử lý lỗi kết nối mạng.
@@ -259,7 +259,7 @@ Weather API Local Storage
 * RecyclerView
 * Glide
 * Gson
-* OpenWeatherMap API
+* Open-Meteo API
 * Google Play Services Location
 * SharedPreferences
 * Git
@@ -339,7 +339,7 @@ Mục tiêu của dự án:
 * Android Studio Hedgehog hoặc mới hơn.
 * Android SDK 26 trở lên.
 * Internet Connection.
-* OpenWeatherMap API Key.
+* Open-Meteo API Key.
 
 ### Steps
 
@@ -376,7 +376,7 @@ Mục tiêu của dự án:
 
 * Xây dựng cấu trúc dự án.
 * Thiết lập mô hình MVVM.
-* Kết nối OpenWeatherMap API.
+* Kết nối Open-Meteo API.
 
  **Week 3**
 
