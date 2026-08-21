@@ -1,12 +1,8 @@
 package com.example.android_uth_02_weather_viewing_app_group6.ui.screens
 
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,21 +17,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,464 +42,276 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.android_uth_02_weather_viewing_app_group6.data.location.DefaultLocationTracker
-import com.example.android_uth_02_weather_viewing_app_group6.data.repository.WeatherDetail
-import com.example.android_uth_02_weather_viewing_app_group6.ui.model.LocationSearchUiState
-import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.LocationSearchViewModel
-import com.google.android.gms.location.LocationServices
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.CityResultCard
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.SectionTitle
 
 @Composable
 fun SearchScreen(
-<<<<<<< Updated upstream
-    contentPadding: PaddingValues,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     onCitySelected: (String) -> Unit,
 ) {
-    var query by remember { mutableStateOf("") }
-    val suggestions = listOf("Ho Chi Minh", "Da Nang", "Ha Noi", "Can Tho", "Tokyo", "Singapore")
-=======
-    contentPadding: PaddingValues = PaddingValues(0.dp),
-    viewModel: LocationSearchViewModel = rememberLocationSearchViewModel()
-) {
+    var searchQuery by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val uiState by viewModel.uiState.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val searchHistory by viewModel.searchHistory.collectAsState()
+    val popularCities = remember {
+        listOf(
+            "Ho Chi Minh",
+            "Ha Noi",
+            "Da Nang",
+            "Can Tho",
+            "Hai Phong",
+            "Nha Trang",
+            "Hue",
+            "Da Lat",
+            "Tokyo",
+            "Seoul",
+            "Singapore",
+            "Bangkok",
+            "London",
+            "Paris",
+            "New York",
+        )
+    }
 
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
-
-        if (fineGranted || coarseGranted) {
-            viewModel.requestDeviceLocation()
-        } else {
-            viewModel.onPermissionDenied()
-        }
+    val searchHistory = remember {
+        mutableStateListOf("Ho Chi Minh", "Ha Noi", "Da Nang")
     }
 
     val performSearch: (String) -> Unit = { query ->
-        if (query.isNotBlank()) {
+        val trimmed = query.trim()
+        if (trimmed.isNotBlank()) {
             keyboardController?.hide()
-            viewModel.fetchWeatherByCity(query)
+            if (!searchHistory.contains(trimmed)) {
+                searchHistory.add(0, trimmed)
+            }
+            onCitySelected(trimmed)
         }
     }
 
-    val filteredSuggestions = remember(searchQuery, searchHistory) {
+    val filteredSuggestions = remember(searchQuery) {
         if (searchQuery.isBlank()) {
-            searchHistory
+            popularCities
         } else {
-            searchHistory.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
+            popularCities.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
         }
     }
->>>>>>> Stashed changes
 
     LazyColumn(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 16.dp),
     ) {
-        // iOS Style Minimalist Search Bar
+        // 1. Thanh Search Input Box
         item {
             Spacer(modifier = Modifier.height(4.dp))
-<<<<<<< Updated upstream
             OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                label = { Text("Tìm thành phố") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = {
+                    Text(
+                        "Nhập tên thành phố (vd: Ho Chi Minh, Tokyo...)",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                trailingIcon = {
+                    AnimatedVisibility(
+                        visible = searchQuery.isNotEmpty(),
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Clear search",
+                            )
+                        }
+                    }
+                },
                 singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { performSearch(searchQuery) }),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                ),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
 
+        // 2. Nút tìm kiếm nhanh
         item {
             Button(
-                onClick = { onCitySelected(query.trim().ifBlank { "Ho Chi Minh" }) },
+                onClick = { performSearch(searchQuery.ifBlank { "Ho Chi Minh" }) },
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Icon(Icons.Default.LocationOn, contentDescription = null)
+                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Tìm kiếm thành phố")
+                Text("Tìm kiếm ngay", fontWeight = FontWeight.SemiBold)
             }
         }
 
-        items(
-            suggestions.filter {
-                it.contains(query, ignoreCase = true) || query.isBlank()
-            }
-        ) { city ->
-            CityResultCard(
-                city = city,
-                onClick = { onCitySelected(city) },
-=======
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.updateSearchQuery(it) },
-                    placeholder = {
-                        Text(
-                            "Search for a city or region",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { performSearch(searchQuery) }),
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    trailingIcon = {
-                        AnimatedVisibility(
-                            visible = searchQuery.isNotEmpty(),
-                            enter = fadeIn(),
-                            exit = fadeOut()
-                        ) {
-                            IconButton(onClick = { viewModel.clearSearchQuery() }) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Clear search",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        disabledBorderColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        // Current Location Item Row (iOS Weather Style)
+        // 3. Vị trí hiện tại (My Location)
         item {
-            Surface(
-                onClick = {
-                    locationPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
-                },
+            ElevatedCard(
+                onClick = { performSearch("Ho Chi Minh") },
                 shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.fillMaxWidth()
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ),
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(16.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.NearMe,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.NearMe,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "My Location",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold
+                            text = "Vị trí hiện tại của tôi",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
                         )
-                    }
-                }
-            }
-        }
-
-        // UI State Display Section
-        item {
-            when (val state = uiState) {
-                is LocationSearchUiState.Idle -> {}
-                is LocationSearchUiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.5.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                is LocationSearchUiState.Success -> {
-                    AppleStyleWeatherCard(weather = state.weather)
-                }
-                is LocationSearchUiState.CityNotFound -> {
-                    AppleStyleErrorCard(title = "City Not Found", message = "No weather data found for \"${state.cityName}\".")
-                }
-                is LocationSearchUiState.Error -> {
-                    AppleStyleErrorCard(title = "Notice", message = state.message)
-                }
-            }
-        }
-
-        // Recent Searches / History Section Header (Apple iOS Typography)
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (searchQuery.isBlank()) "RECENT SEARCHES" else "SEARCH RESULTS",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 1.sp
-                )
-                if (searchQuery.isBlank() && searchHistory.isNotEmpty()) {
-                    TextButton(onClick = { viewModel.clearSearchHistory() }) {
                         Text(
-                            text = "Clear",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
+                            text = "Tự động xác định thời tiết vị trí hiện tại",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f),
                         )
                     }
                 }
             }
         }
 
-        if (filteredSuggestions.isEmpty()) {
+        // 4. Lịch sử tìm kiếm gần đây
+        if (searchQuery.isBlank() && searchHistory.isNotEmpty()) {
             item {
-                Text(
-                    text = "No recent searches",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
-            }
-        } else {
-            itemsIndexed(filteredSuggestions) { index, city ->
-                AppleStyleSuggestionRow(
-                    cityName = city,
-                    onSelect = {
-                        viewModel.updateSearchQuery(city)
-                        performSearch(city)
-                    },
-                    onRemove = { viewModel.removeHistoryItem(city) }
-                )
-                if (index < filteredSuggestions.lastIndex) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(start = 36.dp)
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "LỊCH SỬ TÌM KIẾM",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
                     )
+                    TextButton(onClick = { searchHistory.clear() }) {
+                        Text("Xóa lịch sử")
+                    }
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun rememberLocationSearchViewModel(): LocationSearchViewModel {
-    val context = LocalContext.current
-    return viewModel {
-        val fusedClient = LocationServices.getFusedLocationProviderClient(context.applicationContext)
-        val tracker = DefaultLocationTracker(fusedClient, context.applicationContext)
-        val repository = com.example.android_uth_02_weather_viewing_app_group6.data.repository.DefaultWeatherRepository(context.applicationContext)
-        LocationSearchViewModel(
-            weatherRepository = repository,
-            locationTracker = tracker
-        )
-    }
-}
-
-@Composable
-fun AppleStyleWeatherCard(weather: WeatherDetail) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
+            items(searchHistory) { itemCity ->
+                ElevatedCard(
+                    onClick = {
+                        searchQuery = itemCity
+                        performSearch(itemCity)
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = weather.cityName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = itemCity,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                         Icon(
-                            imageVector = Icons.Default.LocationOn,
+                            imageVector = Icons.Default.LocationCity,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(18.dp),
                         )
                     }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = weather.condition,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
-
-                Text(
-                    text = weather.temperature,
-                    fontSize = 42.sp,
-                    fontWeight = FontWeight.Light,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Humidity ${weather.humidity}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Wind ${weather.windSpeed}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
-    }
-}
 
-@Composable
-fun AppleStyleErrorCard(title: String, message: String) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Outlined.ErrorOutline,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AppleStyleSuggestionRow(
-    cityName: String,
-    onSelect: () -> Unit,
-    onRemove: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .clickable { onSelect() }
-            .padding(vertical = 10.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Outlined.History,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(14.dp))
+        // 5. Gợi ý thành phố phổ biến
+        item {
             Text(
-                text = cityName,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                text = if (searchQuery.isBlank()) "THÀNH PHỐ PHỔ BIẾN" else "KẾT QUẢ GỢI Ý",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
 
-        IconButton(
-            onClick = onRemove,
-            modifier = Modifier.size(24.dp)
-        ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Remove",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp)
->>>>>>> Stashed changes
+        items(filteredSuggestions) { city ->
+            CityResultCard(
+                city = city,
+                onClick = {
+                    searchQuery = city
+                    performSearch(city)
+                },
             )
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun SearchScreenPreview() {
+    SearchScreen(onCitySelected = {})
+}
+

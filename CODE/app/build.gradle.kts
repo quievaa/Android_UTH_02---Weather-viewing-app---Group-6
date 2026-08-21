@@ -43,6 +43,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // REST API - Retrofit & OkHttp & Gson (Member 2, Member 3)
     implementation("com.squareup.retrofit2:retrofit:2.11.0")

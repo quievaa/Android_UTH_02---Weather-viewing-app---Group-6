@@ -98,8 +98,8 @@ class WeatherRepository(
         0, 1 -> "Clear"
         2, 3 -> "Clouds"
         45, 48 -> "Fog"
-        51..67, 80..82 -> "Rain"
-        71..77, 85, 86 -> "Snow"
+        in 51..67, in 80..82 -> "Rain"
+        in 71..77, 85, 86 -> "Snow"
         95, 96, 99 -> "Thunderstorm"
         else -> "Unknown"
     }
