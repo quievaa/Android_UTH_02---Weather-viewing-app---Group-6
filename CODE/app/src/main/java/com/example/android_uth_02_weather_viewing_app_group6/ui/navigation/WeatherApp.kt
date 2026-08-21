@@ -39,13 +39,10 @@ fun WeatherApp() {
     var showSplash by rememberSaveable { mutableStateOf(true) }
     var currentScreen by rememberSaveable { mutableStateOf(WeatherScreen.Home) }
 
-    LaunchedEffect(Unit) {
-        delay(1200)
-        showSplash = false
-    }
-
     if (showSplash) {
-        SplashScreen()
+        SplashScreen(
+            onTimeout = { showSplash = false }
+        )
     } else {
         MainWeatherScaffold(
             currentScreen = currentScreen,
@@ -107,6 +104,7 @@ fun MainWeatherScaffold(
             WeatherScreen.Home -> HomeScreen(
                 contentPadding = innerPadding,
                 onForecastClick = { onScreenSelected(WeatherScreen.Forecast) },
+                onSearchClick = { onScreenSelected(WeatherScreen.Search) },
                 viewModel = weatherViewModel,
             )
 
