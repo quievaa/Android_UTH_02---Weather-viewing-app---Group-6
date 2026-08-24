@@ -51,6 +51,46 @@ class WeatherRepository(
         }
     }
 
+    suspend fun getWeatherByCoordinates(
+        latitude: Double,
+        longitude: Double,
+        cityName: String? = null,
+    ): Result<CurrentWeather> {
+        return try {
+            val weatherResponse = weatherApi.getCurrentWeather(
+                latitude = latitude,
+                longitude = longitude,
+            )
+
+            if (!weatherResponse.isSuccessful) {
+                return Result.failure(
+                    IllegalStateException("Open-Meteo trả về lỗi HTTP ${weatherResponse.code()}.")
+                )
+            }
+
+            val body = weatherResponse.body()
+                ?: return Result.failure(IllegalStateException("API không trả về dữ liệu thời tiết."))
+
+            val resolvedName = cityName ?: "Vị trí hiện tại"
+            val dummyLocation = GeocodingResult(
+                name = resolvedName,
+                latitude = latitude,
+                longitude = longitude,
+                country = "",
+                admin1 = null,
+            )
+
+            Result.success(body.toCurrentWeather(dummyLocation))
+        } catch (e: Exception) {
+            Result.failure(
+                IllegalStateException(
+                    e.localizedMessage ?: "Không thể kết nối đến Open-Meteo.",
+                    e,
+                )
+            )
+        }
+    }
+
     private fun OpenMeteoWeatherResponse.toCurrentWeather(
         location: GeocodingResult,
     ): CurrentWeather {

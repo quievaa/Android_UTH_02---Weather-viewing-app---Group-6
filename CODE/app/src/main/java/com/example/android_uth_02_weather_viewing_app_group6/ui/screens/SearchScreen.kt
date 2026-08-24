@@ -1,9 +1,13 @@
 package com.example.android_uth_02_weather_viewing_app_group6.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,13 +30,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationCity
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,21 +51,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.CityResultCard
-import com.example.android_uth_02_weather_viewing_app_group6.ui.components.SectionTitle
 
 @Composable
 fun SearchScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     onCitySelected: (String) -> Unit,
+    onLocationRequested: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -89,6 +92,46 @@ fun SearchScreen(
 
     val searchHistory = remember {
         mutableStateListOf("Ho Chi Minh", "Ha Noi", "Da Nang")
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineGranted || coarseGranted) {
+            onLocationRequested()
+        } else {
+            Toast.makeText(
+                context,
+                "Ứng dụng cần quyền vị trí để lấy thời tiết GPS hiện tại.",
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+
+    val requestGpsLocation = {
+        val hasFine = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasFine || hasCoarse) {
+            onLocationRequested()
+        } else {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                )
+            )
+        }
     }
 
     val performSearch: (String) -> Unit = { query ->
@@ -117,7 +160,6 @@ fun SearchScreen(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
     ) {
-        // 1. Thanh Search Input Box
         item {
             Spacer(modifier = Modifier.height(4.dp))
             OutlinedTextField(
@@ -164,7 +206,6 @@ fun SearchScreen(
             )
         }
 
-        // 2. Nút tìm kiếm nhanh
         item {
             Button(
                 onClick = { performSearch(searchQuery.ifBlank { "Ho Chi Minh" }) },
@@ -177,10 +218,9 @@ fun SearchScreen(
             }
         }
 
-        // 3. Vị trí hiện tại (My Location)
         item {
             ElevatedCard(
-                onClick = { performSearch("Ho Chi Minh") },
+                onClick = { requestGpsLocation() },
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -223,7 +263,6 @@ fun SearchScreen(
             }
         }
 
-        // 4. Lịch sử tìm kiếm gần đây
         if (searchQuery.isBlank() && searchHistory.isNotEmpty()) {
             item {
                 Row(
@@ -282,7 +321,6 @@ fun SearchScreen(
             }
         }
 
-        // 5. Gợi ý thành phố phổ biến
         item {
             Text(
                 text = if (searchQuery.isBlank()) "THÀNH PHỐ PHỔ BIẾN" else "KẾT QUẢ GỢI Ý",
@@ -314,4 +352,3 @@ fun SearchScreen(
 fun SearchScreenPreview() {
     SearchScreen(onCitySelected = {})
 }
-
