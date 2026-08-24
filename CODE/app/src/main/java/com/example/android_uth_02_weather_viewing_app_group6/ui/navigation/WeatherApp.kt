@@ -15,14 +15,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.android_uth_02_weather_viewing_app_group6.data.location.DefaultLocationTracker
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.RetrofitClient
 import com.example.android_uth_02_weather_viewing_app_group6.data.repository.WeatherRepository
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.FavoriteScreen
@@ -32,7 +33,6 @@ import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.SearchSc
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.SettingsScreen
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.SplashScreen
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherViewModel
-import kotlinx.coroutines.delay
 
 @Composable
 fun WeatherApp() {
@@ -57,6 +57,9 @@ fun MainWeatherScaffold(
     currentScreen: WeatherScreen,
     onScreenSelected: (WeatherScreen) -> Unit,
 ) {
+    val context = LocalContext.current
+    val locationTracker = remember(context) { DefaultLocationTracker(context) }
+
     val repository = remember {
         WeatherRepository(
             weatherApi = RetrofitClient.weatherApi,
@@ -113,6 +116,13 @@ fun MainWeatherScaffold(
                 onCitySelected = {
                     weatherViewModel.loadCurrentWeather(it)
                     onScreenSelected(WeatherScreen.Home)
+                },
+                onLocationRequested = {
+                    weatherViewModel.fetchLocationWeather(locationTracker) { success, _ ->
+                        if (success) {
+                            onScreenSelected(WeatherScreen.Home)
+                        }
+                    }
                 },
             )
 
