@@ -40,7 +40,7 @@ class WeatherRepository(
             val body = weatherResponse.body()
                 ?: return Result.failure(IllegalStateException("API không trả về dữ liệu thời tiết."))
 
-            Result.success(body.toCurrentWeather(location.name, location.latitude, location.longitude))
+            Result.success(body.toCurrentWeather(location))
         } catch (e: Exception) {
             Result.failure(
                 IllegalStateException(
@@ -51,7 +51,11 @@ class WeatherRepository(
         }
     }
 
-    suspend fun getCurrentWeatherByLocation(latitude: Double, longitude: Double): Result<CurrentWeather> {
+    suspend fun getWeatherByCoordinates(
+        latitude: Double,
+        longitude: Double,
+        cityName: String? = null,
+    ): Result<CurrentWeather> {
         return try {
             val weatherResponse = weatherApi.getCurrentWeather(
                 latitude = latitude,
@@ -67,8 +71,16 @@ class WeatherRepository(
             val body = weatherResponse.body()
                 ?: return Result.failure(IllegalStateException("API không trả về dữ liệu thời tiết."))
 
-            val displayLocation = String.format(java.util.Locale.US, "%.2f, %.2f", latitude, longitude)
-            Result.success(body.toCurrentWeather(displayLocation, latitude, longitude))
+            val resolvedName = cityName ?: "Vị trí hiện tại"
+            val dummyLocation = GeocodingResult(
+                name = resolvedName,
+                latitude = latitude,
+                longitude = longitude,
+                country = "",
+                admin1 = null,
+            )
+
+            Result.success(body.toCurrentWeather(dummyLocation))
         } catch (e: Exception) {
             Result.failure(
                 IllegalStateException(
@@ -80,16 +92,14 @@ class WeatherRepository(
     }
 
     private fun OpenMeteoWeatherResponse.toCurrentWeather(
-        locationName: String,
-        lat: Double,
-        lon: Double,
+        location: GeocodingResult,
     ): CurrentWeather {
         val code = current.weatherCode
         val min = daily?.minTemperature?.firstOrNull() ?: current.temperature
         val max = daily?.maxTemperature?.firstOrNull() ?: current.temperature
 
         return CurrentWeather(
-            cityName = locationName,
+            cityName = location.name,
             temperatureC = current.temperature,
             feelsLikeC = current.apparentTemperature,
             minTemperatureC = min,
@@ -100,8 +110,8 @@ class WeatherRepository(
             pressureHpa = current.pressure,
             windSpeedMps = current.windSpeed,
             windDirectionDeg = current.windDirection,
-            latitude = lat,
-            longitude = lon,
+            latitude = latitude,
+            longitude = longitude,
             iconCode = code.toString(),
         )
     }
