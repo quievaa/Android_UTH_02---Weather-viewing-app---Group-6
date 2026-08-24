@@ -1,50 +1,14 @@
 package com.example.android_uth_02_weather_viewing_app_group6.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.DeviceThermostat
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -53,10 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
-import com.example.android_uth_02_weather_viewing_app_group6.ui.components.HomeSearchBar
-import com.example.android_uth_02_weather_viewing_app_group6.ui.components.SectionTitle
-import com.example.android_uth_02_weather_viewing_app_group6.ui.components.WeatherDetailCard
-import com.example.android_uth_02_weather_viewing_app_group6.ui.components.getWeatherIcon
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.*
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherUiState
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherViewModel
 import java.util.Locale
@@ -73,6 +34,8 @@ fun HomeScreen(
     HomeScreenContent(
         contentPadding = contentPadding,
         uiState = uiState,
+        tempFormatter = { viewModel.formatTemperature(it) },
+        windFormatter = { viewModel.formatWindSpeed(it) },
         onForecastClick = onForecastClick,
         onSearchClick = onSearchClick,
         onRetry = viewModel::retry,
@@ -83,6 +46,8 @@ fun HomeScreen(
 fun HomeScreenContent(
     contentPadding: PaddingValues,
     uiState: WeatherUiState,
+    tempFormatter: (Double) -> String,
+    windFormatter: (Double) -> String,
     onForecastClick: () -> Unit,
     onSearchClick: () -> Unit,
     onRetry: () -> Unit,
@@ -99,7 +64,6 @@ fun HomeScreenContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // 1. Thanh Search Bar ở đầu trang
             item {
                 Spacer(modifier = Modifier.height(4.dp))
                 HomeSearchBar(
@@ -108,7 +72,6 @@ fun HomeScreenContent(
                 )
             }
 
-            // 2. Nội dung chính theo trạng thái UI
             when (uiState) {
                 is WeatherUiState.Loading -> {
                     item { LoadingWeatherCard() }
@@ -123,48 +86,49 @@ fun HomeScreenContent(
                 }
                 is WeatherUiState.Success -> {
                     val weather = uiState.weather
-                    if (isExpandedLayout) {
-                        // Responsive Layout cho màn hình ngang / Tablet: 2 cột
-                        item {
+                    item {
+                        if (isExpandedLayout) {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                // Cột trái: Hero Card
                                 Box(modifier = Modifier.weight(1f)) {
                                     HeroWeatherCard(
                                         weather = weather,
+                                        tempFormatter = tempFormatter,
                                         onForecastClick = onForecastClick,
                                     )
                                 }
-                                // Cột phải: Detailed Cards
                                 Column(
                                     modifier = Modifier.weight(1f),
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    WeatherMetricsGrid(weather = weather, isWide = true)
+                                    WeatherMetricsGrid(
+                                        weather = weather,
+                                        tempFormatter = tempFormatter,
+                                        windFormatter = windFormatter
+                                    )
                                 }
                             }
-                        }
-                    } else {
-                        // Layout cho màn hình dọc tiêu chuẩn
-                        item {
-                            HeroWeatherCard(
-                                weather = weather,
-                                onForecastClick = onForecastClick,
-                            )
-                        }
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                HeroWeatherCard(
+                                    weather = weather,
+                                    tempFormatter = tempFormatter,
+                                    onForecastClick = onForecastClick,
+                                )
 
-                        item {
-                            SectionTitle("Chỉ số thời tiết chi tiết")
-                            WeatherMetricsGrid(weather = weather, isWide = false)
-                        }
+                                SectionTitle("Chỉ số thời tiết chi tiết")
+                                WeatherMetricsGrid(
+                                    weather = weather,
+                                    tempFormatter = tempFormatter,
+                                    windFormatter = windFormatter
+                                )
 
-                        // Card thông tin vị trí tọa độ
-                        item {
-                            SectionTitle("Thông tin địa lý")
-                            CoordinatesCard(weather = weather)
-                            Spacer(modifier = Modifier.height(16.dp))
+                                SectionTitle("Thông tin địa lý")
+                                CoordinatesCard(weather = weather)
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
                         }
                     }
                 }
@@ -173,12 +137,10 @@ fun HomeScreenContent(
     }
 }
 
-/**
- * Hero Card hiển thị thời tiết hiện tại nổi bật
- */
 @Composable
 fun HeroWeatherCard(
     weather: CurrentWeather,
+    tempFormatter: (Double) -> String,
     onForecastClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -206,7 +168,6 @@ fun HeroWeatherCard(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                // Header thành phố & icon vị trí
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -247,7 +208,6 @@ fun HeroWeatherCard(
                     }
                 }
 
-                // Mô tả thời tiết
                 Text(
                     text = weather.description.replaceFirstChar {
                         if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
@@ -256,14 +216,13 @@ fun HeroWeatherCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                 )
 
-                // Nhiệt độ lớn và cảm giác như
                 Row(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
-                        text = "${weather.temperatureC.toInt()}°C",
+                        text = tempFormatter(weather.temperatureC),
                         style = MaterialTheme.typography.displayMedium.copy(
                             fontSize = 48.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -273,7 +232,7 @@ fun HeroWeatherCard(
 
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "Cảm giác như ${weather.feelsLikeC.toInt()}°C",
+                            text = "Cảm giác như ${tempFormatter(weather.feelsLikeC)}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
@@ -287,7 +246,7 @@ fun HeroWeatherCard(
                                 modifier = Modifier.size(14.dp),
                             )
                             Text(
-                                text = "${weather.maxTemperatureC.toInt()}°",
+                                text = tempFormatter(weather.maxTemperatureC),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -300,7 +259,7 @@ fun HeroWeatherCard(
                                 modifier = Modifier.size(14.dp),
                             )
                             Text(
-                                text = "${weather.minTemperatureC.toInt()}°",
+                                text = tempFormatter(weather.minTemperatureC),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -311,7 +270,6 @@ fun HeroWeatherCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Nút chuyển sang màn hình dự báo thời tiết 5 ngày
                 Button(
                     onClick = onForecastClick,
                     shape = RoundedCornerShape(12.dp),
@@ -336,28 +294,25 @@ fun HeroWeatherCard(
     }
 }
 
-/**
- * Lưới hiển thị các Card chỉ số thời tiết chi tiết: Nhiệt độ, Độ ẩm, Áp suất, Gió
- */
 @Composable
 fun WeatherMetricsGrid(
     weather: CurrentWeather,
-    isWide: Boolean,
+    tempFormatter: (Double) -> String,
+    windFormatter: (Double) -> String,
     modifier: Modifier = Modifier,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
-        // Hàng 1: Nhiệt độ & Độ ẩm
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             WeatherDetailCard(
                 title = "NHIỆT ĐỘ",
-                value = "${weather.temperatureC.toInt()}°C",
-                subtitle = "Thấp ${weather.minTemperatureC.toInt()}° • Cao ${weather.maxTemperatureC.toInt()}°",
+                value = tempFormatter(weather.temperatureC),
+                subtitle = "Thấp ${tempFormatter(weather.minTemperatureC)} • Cao ${tempFormatter(weather.maxTemperatureC)}",
                 icon = Icons.Default.DeviceThermostat,
                 iconColor = Color(0xFFFF7043),
                 modifier = Modifier.weight(1f),
@@ -372,14 +327,13 @@ fun WeatherMetricsGrid(
             )
         }
 
-        // Hàng 2: Tốc độ gió & Áp suất
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            WeatherDetailCard(
+             WeatherDetailCard(
                 title = "TỐC ĐỘ GIÓ",
-                value = "${String.format(Locale.US, "%.1f", weather.windSpeedMps)} m/s",
+                value = windFormatter(weather.windSpeedMps),
                 subtitle = weather.windDirectionDeg?.let { "Hướng $it°" } ?: "Gió nhẹ",
                 icon = Icons.Default.Air,
                 iconColor = Color(0xFF26A69A),
@@ -397,9 +351,6 @@ fun WeatherMetricsGrid(
     }
 }
 
-/**
- * Card hiển thị vị trí và tọa độ địa lý
- */
 @Composable
 fun CoordinatesCard(
     weather: CurrentWeather,
