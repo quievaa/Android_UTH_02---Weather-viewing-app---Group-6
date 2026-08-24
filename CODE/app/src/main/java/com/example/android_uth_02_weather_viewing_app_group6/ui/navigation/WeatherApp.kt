@@ -116,9 +116,15 @@ fun MainWeatherScaffold(
                 },
             )
 
-            WeatherScreen.Forecast -> ForecastScreen(contentPadding = innerPadding)
+            WeatherScreen.Forecast -> ForecastScreen(
+                contentPadding = innerPadding,
+                viewModel = weatherViewModel,
+            )
             WeatherScreen.Favorite -> FavoriteScreen(contentPadding = innerPadding)
-            WeatherScreen.Settings -> SettingsScreen(contentPadding = innerPadding)
+            WeatherScreen.Settings -> SettingsScreen(
+                contentPadding = innerPadding,
+                viewModel = weatherViewModel,
+            )
         }
     }
 }

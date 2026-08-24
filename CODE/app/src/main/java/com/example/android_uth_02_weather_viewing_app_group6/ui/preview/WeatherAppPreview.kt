@@ -35,6 +35,10 @@ private val mockWeather = CurrentWeather(
     iconCode = "01d",
 )
 
+// Hàm giả lập định dạng cho Preview
+private fun mockTempFormatter(temp: Double) = "${temp.toInt()}°C"
+private fun mockWindFormatter(speed: Double) = "$speed m/s"
+
 @Preview(name = "Splash Screen", showBackground = true)
 @Composable
 private fun SplashScreenPreview() {
@@ -55,6 +59,8 @@ private fun HomeScreenPortraitPreview() {
             HomeScreenContent(
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
+                tempFormatter = ::mockTempFormatter,
+                windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
                 onSearchClick = {},
                 onRetry = {},
@@ -75,6 +81,8 @@ private fun HomeScreenDarkModePreview() {
             HomeScreenContent(
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
+                tempFormatter = ::mockTempFormatter,
+                windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
                 onSearchClick = {},
                 onRetry = {},
@@ -95,6 +103,8 @@ private fun HomeScreenLandscapePreview() {
             HomeScreenContent(
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
+                tempFormatter = ::mockTempFormatter,
+                windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
                 onSearchClick = {},
                 onRetry = {},
@@ -115,6 +125,8 @@ private fun HomeScreenTabletPreview() {
             HomeScreenContent(
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
+                tempFormatter = ::mockTempFormatter,
+                windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
                 onSearchClick = {},
                 onRetry = {},
@@ -133,4 +145,3 @@ private fun SearchScreenPreview() {
         )
     }
 }
-

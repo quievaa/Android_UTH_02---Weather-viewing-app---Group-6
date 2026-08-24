@@ -20,21 +20,30 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.SectionTitle
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.ForecastItem
+import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherViewModel
 
 @Composable
-fun ForecastScreen(contentPadding: PaddingValues) {
+fun ForecastScreen(
+    contentPadding: PaddingValues,
+    viewModel: WeatherViewModel
+) {
+    // Sử dụng collectAsState để quan sát thay đổi đơn vị
+    val isCelsius by viewModel.isCelsius.collectAsState()
+    
     val forecast = listOf(
-        ForecastItem("Monday", "Cloudy", "27 C / 33 C"),
-        ForecastItem("Tuesday", "Light rain", "26 C / 31 C"),
-        ForecastItem("Wednesday", "Sunny", "28 C / 34 C"),
-        ForecastItem("Thursday", "Thunderstorm", "25 C / 30 C"),
-        ForecastItem("Friday", "Partly cloudy", "27 C / 32 C"),
+        ForecastItem("Thứ Hai", "Nhiều mây", if (isCelsius) "27°C / 33°C" else "81°F / 91°F"),
+        ForecastItem("Thứ Ba", "Mưa nhỏ", if (isCelsius) "26°C / 31°C" else "79°F / 88°F"),
+        ForecastItem("Thứ Tư", "Nắng", if (isCelsius) "28°C / 34°C" else "82°F / 93°F"),
+        ForecastItem("Thứ Năm", "Mưa dông", if (isCelsius) "25°C / 30°C" else "77°F / 86°F"),
+        ForecastItem("Thứ Sáu", "Mây rải rác", if (isCelsius) "27°C / 32°C" else "81°F / 90°F"),
     )
 
     LazyColumn(
