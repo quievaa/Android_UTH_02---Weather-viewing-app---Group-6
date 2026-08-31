@@ -3,11 +3,15 @@ package com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.android_uth_02_weather_viewing_app_group6.data.location.LocationTracker
+import com.example.android_uth_02_weather_viewing_app_group6.data.model.FavoriteCity
+import com.example.android_uth_02_weather_viewing_app_group6.data.repository.AppPreferences
 import com.example.android_uth_02_weather_viewing_app_group6.data.repository.WeatherRepository
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -19,6 +23,7 @@ sealed interface WeatherUiState {
 
 class WeatherViewModel(
     private val repository: WeatherRepository,
+    private val appPreferences: AppPreferences? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
@@ -30,10 +35,36 @@ class WeatherViewModel(
     private val _windUnit = MutableStateFlow("m/s")
     val windUnit: StateFlow<String> = _windUnit.asStateFlow()
 
+    val searchHistory: StateFlow<List<String>> = appPreferences?.searchHistory
+        ?.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = listOf("Ho Chi Minh", "Ha Noi", "Da Nang"),
+        ) ?: MutableStateFlow(listOf("Ho Chi Minh", "Ha Noi", "Da Nang")).asStateFlow()
+
+    val favoriteCities: StateFlow<List<FavoriteCity>> = appPreferences?.favoriteCities
+        ?.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList(),
+        ) ?: MutableStateFlow<List<FavoriteCity>>(emptyList()).asStateFlow()
+
     private var lastCity: String = "Ho Chi Minh"
     private var lastCoordinates: Pair<Double, Double>? = null
 
     init {
+        if (appPreferences != null) {
+            viewModelScope.launch {
+                appPreferences.temperatureUnit.collect { unit ->
+                    _isCelsius.value = (unit == "C")
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.windUnit.collect { unit ->
+                    _windUnit.value = unit
+                }
+            }
+        }
         loadCurrentWeather(lastCity)
     }
 
@@ -46,7 +77,9 @@ class WeatherViewModel(
 
         lastCity = city
         lastCoordinates = null
+
         viewModelScope.launch {
+            appPreferences?.addSearchQuery(city)
             _uiState.value = WeatherUiState.Loading
             repository.getCurrentWeather(city)
                 .onSuccess { _uiState.value = WeatherUiState.Success(it) }
@@ -104,11 +137,36 @@ class WeatherViewModel(
     }
 
     fun toggleTemperatureUnit() {
-        _isCelsius.value = !_isCelsius.value
+        val nextIsCelsius = !_isCelsius.value
+        _isCelsius.value = nextIsCelsius
+        viewModelScope.launch {
+            appPreferences?.saveTemperatureUnit(if (nextIsCelsius) "C" else "F")
+        }
     }
 
     fun updateWindUnit(unit: String) {
         _windUnit.value = unit
+        viewModelScope.launch {
+            appPreferences?.saveWindUnit(unit)
+        }
+    }
+
+    fun addFavorite(city: FavoriteCity) {
+        viewModelScope.launch {
+            appPreferences?.addFavoriteCity(city)
+        }
+    }
+
+    fun removeFavorite(cityId: String) {
+        viewModelScope.launch {
+            appPreferences?.removeFavoriteCity(cityId)
+        }
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch {
+            appPreferences?.clearSearchHistory()
+        }
     }
 
     fun formatTemperature(tempC: Double): String {

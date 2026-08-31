@@ -63,6 +63,8 @@ import com.example.android_uth_02_weather_viewing_app_group6.ui.components.CityR
 @Composable
 fun SearchScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    searchHistory: List<String> = listOf("Ho Chi Minh", "Ha Noi", "Da Nang"),
+    onClearHistory: () -> Unit = {},
     onCitySelected: (String) -> Unit,
     onLocationRequested: () -> Unit = {},
 ) {
@@ -88,10 +90,6 @@ fun SearchScreen(
             "Paris",
             "New York",
         )
-    }
-
-    val searchHistory = remember {
-        mutableStateListOf("Ho Chi Minh", "Ha Noi", "Da Nang")
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -138,9 +136,6 @@ fun SearchScreen(
         val trimmed = query.trim()
         if (trimmed.isNotBlank()) {
             keyboardController?.hide()
-            if (!searchHistory.contains(trimmed)) {
-                searchHistory.add(0, trimmed)
-            }
             onCitySelected(trimmed)
         }
     }
@@ -276,7 +271,7 @@ fun SearchScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                     )
-                    TextButton(onClick = { searchHistory.clear() }) {
+                    TextButton(onClick = { onClearHistory() }) {
                         Text("Xóa lịch sử")
                     }
                 }

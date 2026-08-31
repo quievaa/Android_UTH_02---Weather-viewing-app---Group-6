@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -66,19 +67,23 @@ class LocationAndSearchUnitTest {
             language: String,
             format: String,
         ): Response<GeocodingResponse> {
-            return Response.success(
-                GeocodingResponse(
-                    listOf(
-                        GeocodingResult(
-                            name = name,
-                            latitude = 10.76,
-                            longitude = 106.66,
-                            country = "VN",
-                            admin1 = null,
+            return if (name == "UnknownCity") {
+                Response.success(GeocodingResponse(emptyList()))
+            } else {
+                Response.success(
+                    GeocodingResponse(
+                        listOf(
+                            GeocodingResult(
+                                name = name,
+                                latitude = 10.76,
+                                longitude = 106.66,
+                                country = "VN",
+                                admin1 = null,
+                            )
                         )
                     )
                 )
-            )
+            }
         }
     }
 
@@ -101,6 +106,15 @@ class LocationAndSearchUnitTest {
         val weather = result.getOrNull()
         assertEquals("Vị trí GPS của tôi", weather?.cityName)
         assertEquals(30.0, weather?.temperatureC ?: 0.0, 0.01)
+    }
+
+    @Test
+    fun testWeatherRepository_unknownCity_returnsFailure() = runTest {
+        val repository = WeatherRepository(fakeWeatherApi, fakeGeocodingApi)
+        val result = repository.getCurrentWeather("UnknownCity")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
     }
 
     @Test
@@ -134,5 +148,25 @@ class LocationAndSearchUnitTest {
 
         assertEquals(false, resultSuccess)
         assertTrue(resultErrorMsg?.contains("Không thể lấy vị trí GPS") == true)
+    }
+
+    @Test
+    fun testWeatherViewModel_unitFormatting() = runTest {
+        val repository = WeatherRepository(fakeWeatherApi, fakeGeocodingApi)
+        val viewModel = WeatherViewModel(repository)
+
+        // Default C
+        assertEquals("30°C", viewModel.formatTemperature(30.0))
+        assertEquals("3.5 m/s", viewModel.formatWindSpeed(3.5))
+
+        // Toggle to F
+        viewModel.toggleTemperatureUnit()
+        assertFalse(viewModel.isCelsius.value)
+        assertEquals("86°F", viewModel.formatTemperature(30.0))
+
+        // Toggle to km/h
+        viewModel.updateWindUnit("km/h")
+        assertEquals("km/h", viewModel.windUnit.value)
+        assertEquals("12.6 km/h", viewModel.formatWindSpeed(3.5))
     }
 }

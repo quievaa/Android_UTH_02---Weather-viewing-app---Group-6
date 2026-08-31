@@ -15,6 +15,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.android_uth_02_weather_viewing_app_group6.data.location.DefaultLocationTracker
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.RetrofitClient
+import com.example.android_uth_02_weather_viewing_app_group6.data.repository.AppPreferences
 import com.example.android_uth_02_weather_viewing_app_group6.data.repository.WeatherRepository
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.FavoriteScreen
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.ForecastScreen
@@ -59,6 +61,7 @@ fun MainWeatherScaffold(
 ) {
     val context = LocalContext.current
     val locationTracker = remember(context) { DefaultLocationTracker(context) }
+    val appPreferences = remember(context) { AppPreferences(context) }
 
     val repository = remember {
         WeatherRepository(
@@ -67,8 +70,10 @@ fun MainWeatherScaffold(
         )
     }
     val weatherViewModel: WeatherViewModel = viewModel(
-        factory = WeatherViewModelFactory(repository),
+        factory = WeatherViewModelFactory(repository, appPreferences),
     )
+
+    val searchHistory by weatherViewModel.searchHistory.collectAsState()
 
     Scaffold(
         topBar = {
@@ -113,6 +118,8 @@ fun MainWeatherScaffold(
 
             WeatherScreen.Search -> SearchScreen(
                 contentPadding = innerPadding,
+                searchHistory = searchHistory,
+                onClearHistory = weatherViewModel::clearHistory,
                 onCitySelected = {
                     weatherViewModel.loadCurrentWeather(it)
                     onScreenSelected(WeatherScreen.Home)
