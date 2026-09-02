@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +44,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(
+    modifier: Modifier = Modifier,
     onTimeout: () -> Unit = {},
 ) {
     val scale = remember { Animatable(0.3f) }
@@ -67,12 +67,12 @@ fun SplashScreen(
             )
         }
 
-        delay(2000)
+        delay(2000L)
         onTimeout()
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(

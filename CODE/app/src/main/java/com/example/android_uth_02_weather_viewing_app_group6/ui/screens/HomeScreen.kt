@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,104 +31,116 @@ fun HomeScreen(
     viewModel: WeatherViewModel,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     HomeScreenContent(
         contentPadding = contentPadding,
         uiState = uiState,
+        isRefreshing = isRefreshing,
         tempFormatter = { viewModel.formatTemperature(it) },
         windFormatter = { viewModel.formatWindSpeed(it) },
         onForecastClick = onForecastClick,
         onSearchClick = onSearchClick,
+        onRefresh = viewModel::retry,
         onRetry = viewModel::retry,
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreenContent(
     contentPadding: PaddingValues,
     uiState: WeatherUiState,
+    isRefreshing: Boolean,
     tempFormatter: (Double) -> String,
     windFormatter: (Double) -> String,
     onForecastClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onRefresh: () -> Unit,
     onRetry: () -> Unit,
 ) {
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize(),
     ) {
-        val isExpandedLayout = maxWidth >= 600.dp
-
-        LazyColumn(
-            contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize(),
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
         ) {
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                HomeSearchBar(
-                    hint = "Tìm kiếm thành phố, địa điểm...",
-                    onSearchClick = onSearchClick,
-                )
-            }
+            val isExpandedLayout = maxWidth >= 600.dp
 
-            when (uiState) {
-                is WeatherUiState.Loading -> {
-                    item { LoadingWeatherCard() }
+            LazyColumn(
+                contentPadding = contentPadding,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    HomeSearchBar(
+                        hint = "Tìm kiếm thành phố, địa điểm...",
+                        onSearchClick = onSearchClick,
+                    )
                 }
-                is WeatherUiState.Error -> {
-                    item {
-                        ErrorWeatherCard(
-                            message = uiState.message,
-                            onRetry = onRetry,
-                        )
+
+                when (uiState) {
+                    is WeatherUiState.Loading -> {
+                        item { LoadingWeatherCard() }
                     }
-                }
-                is WeatherUiState.Success -> {
-                    val weather = uiState.weather
-                    item {
-                        if (isExpandedLayout) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Box(modifier = Modifier.weight(1f)) {
+                    is WeatherUiState.Error -> {
+                        item {
+                            ErrorWeatherCard(
+                                message = uiState.message,
+                                onRetry = onRetry,
+                            )
+                        }
+                    }
+                    is WeatherUiState.Success -> {
+                        val weather = uiState.weather
+                        item {
+                            if (isExpandedLayout) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        HeroWeatherCard(
+                                            weather = weather,
+                                            tempFormatter = tempFormatter,
+                                            onForecastClick = onForecastClick,
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        WeatherMetricsGrid(
+                                            weather = weather,
+                                            tempFormatter = tempFormatter,
+                                            windFormatter = windFormatter
+                                        )
+                                    }
+                                }
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                     HeroWeatherCard(
                                         weather = weather,
                                         tempFormatter = tempFormatter,
                                         onForecastClick = onForecastClick,
                                     )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
+
+                                    SectionTitle("Chỉ số thời tiết chi tiết")
                                     WeatherMetricsGrid(
                                         weather = weather,
                                         tempFormatter = tempFormatter,
                                         windFormatter = windFormatter
                                     )
+
+                                    SectionTitle("Thông tin địa lý")
+                                    CoordinatesCard(weather = weather)
+                                    Spacer(modifier = Modifier.height(16.dp))
                                 }
-                            }
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                HeroWeatherCard(
-                                    weather = weather,
-                                    tempFormatter = tempFormatter,
-                                    onForecastClick = onForecastClick,
-                                )
-
-                                SectionTitle("Chỉ số thời tiết chi tiết")
-                                WeatherMetricsGrid(
-                                    weather = weather,
-                                    tempFormatter = tempFormatter,
-                                    windFormatter = windFormatter
-                                )
-
-                                SectionTitle("Thông tin địa lý")
-                                CoordinatesCard(weather = weather)
-                                Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
                     }

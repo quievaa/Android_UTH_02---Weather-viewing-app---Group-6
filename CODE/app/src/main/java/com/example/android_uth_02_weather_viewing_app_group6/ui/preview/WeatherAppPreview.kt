@@ -59,10 +59,12 @@ private fun HomeScreenPortraitPreview() {
             HomeScreenContent(
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
+                isRefreshing = false,
                 tempFormatter = ::mockTempFormatter,
                 windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
                 onSearchClick = {},
+                onRefresh = {},
                 onRetry = {},
             )
         }
@@ -81,10 +83,12 @@ private fun HomeScreenDarkModePreview() {
             HomeScreenContent(
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
+                isRefreshing = false,
                 tempFormatter = ::mockTempFormatter,
                 windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
                 onSearchClick = {},
+                onRefresh = {},
                 onRetry = {},
             )
         }
@@ -103,10 +107,12 @@ private fun HomeScreenLandscapePreview() {
             HomeScreenContent(
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
+                isRefreshing = false,
                 tempFormatter = ::mockTempFormatter,
                 windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
                 onSearchClick = {},
+                onRefresh = {},
                 onRetry = {},
             )
         }
@@ -125,10 +131,12 @@ private fun HomeScreenTabletPreview() {
             HomeScreenContent(
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
+                isRefreshing = false,
                 tempFormatter = ::mockTempFormatter,
                 windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
                 onSearchClick = {},
+                onRefresh = {},
                 onRetry = {},
             )
         }
