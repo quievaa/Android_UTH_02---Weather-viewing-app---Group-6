@@ -129,6 +129,36 @@ class LocationAndSearchUnitTest {
     }
 
     @Test
+    fun testWeatherViewModel_loadCurrentWeather_success() = runTest {
+        val repository = WeatherRepository(fakeWeatherApi, fakeGeocodingApi)
+        val viewModel = WeatherViewModel(repository)
+
+        viewModel.loadCurrentWeather("Ho Chi Minh")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is WeatherUiState.Success)
+        assertEquals("Ho Chi Minh", (state as WeatherUiState.Success).weather.cityName)
+    }
+
+    @Test
+    fun testWeatherViewModel_retry_updatesState() = runTest {
+        val repository = WeatherRepository(fakeWeatherApi, fakeGeocodingApi)
+        val viewModel = WeatherViewModel(repository)
+
+        // First load
+        viewModel.loadCurrentWeather("Ha Noi")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Trigger retry
+        viewModel.retry()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is WeatherUiState.Success)
+    }
+
+    @Test
     fun testWeatherViewModel_fetchLocationWeather_handlesNullLocation() = runTest {
         val repository = WeatherRepository(fakeWeatherApi, fakeGeocodingApi)
         val viewModel = WeatherViewModel(repository)

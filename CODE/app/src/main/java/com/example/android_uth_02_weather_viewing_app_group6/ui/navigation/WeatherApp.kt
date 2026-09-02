@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -80,6 +81,11 @@ fun MainWeatherScaffold(
             TopAppBar(
                 title = { Text(currentScreen.title) },
                 actions = {
+                    if (currentScreen == WeatherScreen.Home) {
+                        IconButton(onClick = { weatherViewModel.retry() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh weather")
+                        }
+                    }
                     IconButton(onClick = { onScreenSelected(WeatherScreen.Search) }) {
                         Icon(Icons.Default.Search, contentDescription = "Open search")
                     }

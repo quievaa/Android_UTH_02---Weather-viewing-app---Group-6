@@ -29,6 +29,9 @@ class WeatherViewModel(
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val uiState: StateFlow<WeatherUiState> = _uiState.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     private val _isCelsius = MutableStateFlow(true)
     val isCelsius: StateFlow<Boolean> = _isCelsius.asStateFlow()
 
@@ -189,10 +192,29 @@ class WeatherViewModel(
 
     fun retry() {
         val coords = lastCoordinates
-        if (coords != null) {
-            loadWeatherByCoordinates(coords.first, coords.second)
-        } else {
-            loadCurrentWeather(lastCity)
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            if (coords != null) {
+                repository.getWeatherByCoordinates(coords.first, coords.second)
+                    .onSuccess {
+                        lastCity = it.cityName
+                        _uiState.value = WeatherUiState.Success(it)
+                    }
+                    .onFailure {
+                        _uiState.value = WeatherUiState.Error(
+                            it.message ?: "Đã xảy ra lỗi khi tải dữ liệu từ vị trí GPS."
+                        )
+                    }
+            } else {
+                repository.getCurrentWeather(lastCity)
+                    .onSuccess { _uiState.value = WeatherUiState.Success(it) }
+                    .onFailure {
+                        _uiState.value = WeatherUiState.Error(
+                            it.message ?: "Đã xảy ra lỗi khi tải dữ liệu thời tiết."
+                        )
+                    }
+            }
+            _isRefreshing.value = false
         }
     }
 }
