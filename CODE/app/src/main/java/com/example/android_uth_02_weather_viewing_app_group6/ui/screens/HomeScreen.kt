@@ -1,24 +1,78 @@
 package com.example.android_uth_02_weather_viewing_app_group6.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Compress
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Navigation
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.WaterDrop
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
-import com.example.android_uth_02_weather_viewing_app_group6.ui.components.*
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.GlassCard
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.TemperatureRangeBar
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.Weather3DBackground
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.WeatherIcon
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.CityLocation
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.DailyForecast
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.HourlyForecast
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WeatherCondition
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherUiState
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherViewModel
 import java.util.Locale
@@ -32,17 +86,37 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val favoriteCities by viewModel.favoriteCities.collectAsState()
+
+    val (currentTemp, currentCond) = when (val state = uiState) {
+        is WeatherUiState.Success -> Pair(state.weather.temperatureC, state.weather.description)
+        else -> Pair(31.0, "Nắng đẹp")
+    }
+
+    val isFav = when (val state = uiState) {
+        is WeatherUiState.Success -> favoriteCities.any { it.cityName.equals(state.weather.cityName, ignoreCase = true) }
+        else -> false
+    }
+
+    val hourlyList = viewModel.getHourlyForecastList(currentTemp, currentCond)
+    val tenDayList = viewModel.getTenDayForecastList(currentTemp, currentCond)
 
     HomeScreenContent(
         contentPadding = contentPadding,
         uiState = uiState,
         isRefreshing = isRefreshing,
+        isFavorite = isFav,
+        availableCities = viewModel.availableCities,
+        hourlyList = hourlyList,
+        tenDayList = tenDayList,
         tempFormatter = { viewModel.formatTemperature(it) },
         windFormatter = { viewModel.formatWindSpeed(it) },
         onForecastClick = onForecastClick,
         onSearchClick = onSearchClick,
+        onToggleFavorite = { viewModel.toggleFavoriteForCurrentCity() },
+        onCitySelected = { city -> viewModel.loadCurrentWeather(city.name) },
         onRefresh = viewModel::retry,
-        onRetry = viewModel::retry,
+        onRetry = viewModel::retry
     )
 }
 
@@ -52,97 +126,404 @@ fun HomeScreenContent(
     contentPadding: PaddingValues,
     uiState: WeatherUiState,
     isRefreshing: Boolean,
+    isFavorite: Boolean = false,
+    availableCities: List<CityLocation> = emptyList(),
+    hourlyList: List<HourlyForecast> = emptyList(),
+    tenDayList: List<DailyForecast> = emptyList(),
     tempFormatter: (Double) -> String,
     windFormatter: (Double) -> String,
     onForecastClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onToggleFavorite: () -> Unit = {},
+    onCitySelected: (CityLocation) -> Unit = {},
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
 ) {
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = onRefresh,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-        ) {
-            val isExpandedLayout = maxWidth >= 600.dp
+    var showCityDialog by remember { mutableStateOf(false) }
 
+    val weatherSuccess = (uiState as? WeatherUiState.Success)?.weather
+    val isNight = weatherSuccess?.iconCode?.endsWith("n") == true || weatherSuccess?.description?.lowercase()?.contains("đêm") == true
+    val weatherCond = weatherSuccess?.let { WeatherCondition.fromDescription(it.description, isNight) } ?: WeatherCondition.SUNNY
+    val windSpeed = weatherSuccess?.windSpeedMps ?: 5.0
+    val currentTemp = weatherSuccess?.temperatureC ?: 30.0
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Dynamic Interactive 3D Three.js Weather Simulation Background
+        Weather3DBackground(
+            condition = weatherCond,
+            isNight = isNight,
+            windSpeedMps = windSpeed,
+            temperatureC = currentTemp
+        )
+
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize()
+        ) {
             LazyColumn(
-                contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = contentPadding.calculateTopPadding() + 8.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 90.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Top Search Bar & Quick Location Selector
                 item {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    HomeSearchBar(
-                        hint = "Tìm kiếm thành phố, địa điểm...",
+                    HomeGlassTopBar(
                         onSearchClick = onSearchClick,
+                        onCityPickerClick = { showCityDialog = true },
+                        onRefreshClick = onRefresh
                     )
                 }
 
                 when (uiState) {
                     is WeatherUiState.Loading -> {
-                        item { LoadingWeatherCard() }
+                        item {
+                            LoadingGlassHeroCard()
+                        }
                     }
+
                     is WeatherUiState.Error -> {
                         item {
-                            ErrorWeatherCard(
+                            ErrorGlassHeroCard(
                                 message = uiState.message,
-                                onRetry = onRetry,
+                                onRetry = onRetry
                             )
                         }
                     }
+
                     is WeatherUiState.Success -> {
                         val weather = uiState.weather
+
+                        // 1. Hero Weather Glass Card with Favorite Bookmark Button
                         item {
-                            if (isExpandedLayout) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        HeroWeatherCard(
-                                            weather = weather,
-                                            tempFormatter = tempFormatter,
-                                            onForecastClick = onForecastClick,
-                                        )
-                                    }
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        WeatherMetricsGrid(
-                                            weather = weather,
-                                            tempFormatter = tempFormatter,
-                                            windFormatter = windFormatter
-                                        )
-                                    }
-                                }
-                            } else {
-                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    HeroWeatherCard(
-                                        weather = weather,
-                                        tempFormatter = tempFormatter,
-                                        onForecastClick = onForecastClick,
-                                    )
-
-                                    SectionTitle("Chỉ số thời tiết chi tiết")
-                                    WeatherMetricsGrid(
-                                        weather = weather,
-                                        tempFormatter = tempFormatter,
-                                        windFormatter = windFormatter
-                                    )
-
-                                    SectionTitle("Thông tin địa lý")
-                                    CoordinatesCard(weather = weather)
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                }
-                            }
+                            HeroWeatherSection(
+                                weather = weather,
+                                isFavorite = isFavorite,
+                                onToggleFavorite = onToggleFavorite,
+                                onCityClick = { showCityDialog = true },
+                                tempFormatter = tempFormatter
+                            )
                         }
+
+                        // 2. 24-Hour Hourly Forecast Strip
+                        item {
+                            HourlyForecastCard(hourlyForecast = hourlyList)
+                        }
+
+                        // 3. 10-Day Forecast Preview Card
+                        item {
+                            TenDayForecastPreviewCard(
+                                forecasts = tenDayList.take(4),
+                                onViewMore = onForecastClick
+                            )
+                        }
+
+                        // 4. Detailed 2x2 Glass Metrics Grid
+                        item {
+                            MetricsGrid(
+                                weather = weather,
+                                windFormatter = windFormatter
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // City Selector Dialog
+        if (showCityDialog && availableCities.isNotEmpty()) {
+            CitySelectorDialog(
+                currentCityName = (uiState as? WeatherUiState.Success)?.weather?.cityName ?: "TP. Hồ Chí Minh",
+                cities = availableCities,
+                onDismiss = { showCityDialog = false },
+                onSelect = { city ->
+                    onCitySelected(city)
+                    showCityDialog = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeGlassTopBar(
+    onSearchClick: () -> Unit,
+    onCityPickerClick: () -> Unit,
+    onRefreshClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Search trigger pill
+        GlassCard(
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp),
+            cornerRadius = 24.dp,
+            backgroundColor = Color(0x331E293B),
+            borderColor = Color(0x3394A3B8),
+            onClick = onSearchClick
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = Color(0xCCFFFFFF),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Tìm kiếm thành phố, địa điểm...",
+                    color = Color(0x99FFFFFF),
+                    fontSize = 14.sp,
+                    maxLines = 1
+                )
+            }
+        }
+
+        // Location picker icon button
+        GlassCard(
+            modifier = Modifier.size(48.dp),
+            cornerRadius = 24.dp,
+            backgroundColor = Color(0x331E293B),
+            borderColor = Color(0x3394A3B8),
+            onClick = onCityPickerClick
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = "Chọn thành phố",
+                    tint = Color(0xFF38BDF8),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        // Refresh icon button
+        GlassCard(
+            modifier = Modifier.size(48.dp),
+            cornerRadius = 24.dp,
+            backgroundColor = Color(0x331E293B),
+            borderColor = Color(0x3394A3B8),
+            onClick = onRefreshClick
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Làm mới",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroWeatherSection(
+    weather: CurrentWeather,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onCityClick: () -> Unit,
+    tempFormatter: (Double) -> String
+) {
+    val favTint by animateColorAsState(
+        targetValue = if (isFavorite) Color(0xFFF43F5E) else Color(0xCCFFFFFF),
+        animationSpec = tween(250),
+        label = "fav_tint"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // City Name Button + Favorite Bookmark Toggle Button
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0x330F172A))
+                    .border(1.dp, Color(0x3394A3B8), RoundedCornerShape(20.dp))
+                    .clickable { onCityClick() }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .testTag("home_city_selector"),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = Color(0xFF38BDF8),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = weather.cityName,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = "Chọn địa điểm",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Heart Favorite Bookmark Toggle Button
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(if (isFavorite) Color(0x33F43F5E) else Color(0x330F172A))
+                    .border(1.dp, if (isFavorite) Color(0x66F43F5E) else Color(0x3394A3B8), CircleShape)
+                    .clickable { onToggleFavorite() }
+                    .testTag("home_favorite_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Yêu thích",
+                    tint = favTint,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Large Weather Vector Icon
+        val weatherCond = WeatherCondition.fromDescription(weather.description)
+        WeatherIcon(
+            condition = weatherCond,
+            size = 80.dp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Huge Main Temperature
+        Text(
+            text = tempFormatter(weather.temperatureC),
+            color = Color.White,
+            fontSize = 68.sp,
+            fontWeight = FontWeight.Light,
+            letterSpacing = (-2).sp
+        )
+
+        // Weather Condition Description
+        Text(
+            text = weather.description.replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+            },
+            color = Color.White,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Medium
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Feels like + High/Low Temperatures
+        Text(
+            text = "Cảm giác như ${tempFormatter(weather.feelsLikeC)}  •  Cao: ${tempFormatter(weather.maxTemperatureC)}  Thấp: ${tempFormatter(weather.minTemperatureC)}",
+            color = Color(0xE6FFFFFF),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal
+        )
+    }
+}
+
+@Composable
+private fun HourlyForecastCard(
+    hourlyForecast: List<HourlyForecast>
+) {
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("hourly_forecast_card"),
+        cornerRadius = 24.dp,
+        backgroundColor = Color(0x331E293B),
+        borderColor = Color(0x3394A3B8)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    tint = Color(0xCCFFFFFF),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Dự báo hàng giờ",
+                    color = Color(0xCCFFFFFF),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                items(hourlyForecast) { item ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = item.time,
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        WeatherIcon(
+                            condition = item.condition,
+                            size = 28.dp
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "${item.temp}°",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
@@ -151,269 +532,459 @@ fun HomeScreenContent(
 }
 
 @Composable
-fun HeroWeatherCard(
-    weather: CurrentWeather,
-    tempFormatter: (Double) -> String,
-    onForecastClick: () -> Unit,
-    modifier: Modifier = Modifier,
+private fun TenDayForecastPreviewCard(
+    forecasts: List<DailyForecast>,
+    onViewMore: () -> Unit
 ) {
-    ElevatedCard(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
-        modifier = modifier.fillMaxWidth(),
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onViewMore() }
+            .testTag("ten_day_preview_card"),
+        cornerRadius = 24.dp,
+        backgroundColor = Color(0x331E293B),
+        borderColor = Color(0x3394A3B8)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.surfaceVariant,
-                        ),
-                    ),
-                ),
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Location",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = weather.cityName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        modifier = Modifier.size(54.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = getWeatherIcon(weather.description),
-                                contentDescription = weather.description,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(32.dp),
-                            )
-                        }
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.CalendarMonth,
+                        contentDescription = null,
+                        tint = Color(0xCCFFFFFF),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Dự báo nhiều ngày tới",
+                        color = Color(0xCCFFFFFF),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
 
                 Text(
-                    text = weather.description.replaceFirstChar {
-                        if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                    text = "Xem chi tiết →",
+                    color = Color(0xFFBAE6FD),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
                 )
+            }
 
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
+            Spacer(modifier = Modifier.height(14.dp))
+
+            forecasts.forEach { item ->
+                ForecastPreviewRowItem(item = item)
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ForecastPreviewRowItem(
+    item: DailyForecast
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = item.dayName,
+            color = Color.White,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(72.dp)
+        )
+
+        WeatherIcon(
+            condition = item.condition,
+            size = 24.dp,
+            modifier = Modifier.width(36.dp)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = "${item.minTemp}°",
+            color = Color(0xCCFFFFFF),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
+            modifier = Modifier.width(28.dp)
+        )
+
+        TemperatureRangeBar(
+            min = item.minTemp,
+            max = item.maxTemp,
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp)
+        )
+
+        Text(
+            text = "${item.maxTemp}°",
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.width(28.dp)
+        )
+    }
+}
+
+@Composable
+private fun MetricsGrid(
+    weather: CurrentWeather,
+    windFormatter: (Double) -> String
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // Row 1: Air Quality + UV Index
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Air Quality Card
+            GlassCard(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(150.dp),
+                cornerRadius = 22.dp,
+                backgroundColor = Color(0x331E293B),
+                borderColor = Color(0x3394A3B8)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = tempFormatter(weather.temperatureC),
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                        ),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "Cảm giác như ${tempFormatter(weather.feelsLikeC)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Air,
+                            contentDescription = null,
+                            tint = Color(0xCCFFFFFF),
+                            modifier = Modifier.size(15.dp)
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Chất lượng KK",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = "42",
+                            color = Color.White,
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.Light
+                        )
+                        Text(
+                            text = "Tốt (Good)",
+                            color = Color(0xFF34D399),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+
                         Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowUpward,
-                                contentDescription = "Max temp",
-                                tint = Color(0xFFE53935),
-                                modifier = Modifier.size(14.dp),
+
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                        ) {
+                            drawRoundRect(
+                                color = Color(0x33FFFFFF),
+                                size = Size(size.width, size.height),
+                                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
                             )
-                            Text(
-                                text = tempFormatter(weather.maxTemperatureC),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Icon(
-                                imageVector = Icons.Default.ArrowDownward,
-                                contentDescription = "Min temp",
-                                tint = Color(0xFF1E88E5),
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Text(
-                                text = tempFormatter(weather.minTemperatureC),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    listOf(Color(0xFF34D399), Color(0xFF10B981))
+                                ),
+                                size = Size(size.width * 0.42f, size.height),
+                                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
                             )
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Button(
-                    onClick = onForecastClick,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
+            // UV Index Card
+            GlassCard(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(150.dp),
+                cornerRadius = 22.dp,
+                backgroundColor = Color(0x331E293B),
+                borderColor = Color(0x3394A3B8)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Xem dự báo 5 ngày tới",
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.WbSunny,
+                            contentDescription = null,
+                            tint = Color(0xCCFFFFFF),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Chất lượng UV",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = "6.5",
+                            color = Color.White,
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.Light
+                        )
+                        Text(
+                            text = "Cao (SPF 30+)",
+                            color = Color(0xFFFBBF24),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                        ) {
+                            drawRoundRect(
+                                color = Color(0x33FFFFFF),
+                                size = Size(size.width, size.height),
+                                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+                            )
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    listOf(Color(0xFFFBBF24), Color(0xFFFB923C))
+                                ),
+                                size = Size(size.width * 0.65f, size.height),
+                                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+                            )
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
-@Composable
-fun WeatherMetricsGrid(
-    weather: CurrentWeather,
-    tempFormatter: (Double) -> String,
-    windFormatter: (Double) -> String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.fillMaxWidth(),
-    ) {
+        // Row 2: Wind + Humidity
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            WeatherDetailCard(
-                title = "NHIỆT ĐỘ",
-                value = tempFormatter(weather.temperatureC),
-                subtitle = "Thấp ${tempFormatter(weather.minTemperatureC)} • Cao ${tempFormatter(weather.maxTemperatureC)}",
-                icon = Icons.Default.DeviceThermostat,
-                iconColor = Color(0xFFFF7043),
-                modifier = Modifier.weight(1f),
-            )
-            WeatherDetailCard(
-                title = "ĐỘ ẨM",
-                value = "${weather.humidityPercent}%",
-                subtitle = if (weather.humidityPercent > 70) "Độ ẩm cao" else "Dễ chịu",
-                icon = Icons.Default.WaterDrop,
-                iconColor = Color(0xFF29B6F6),
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-             WeatherDetailCard(
-                title = "TỐC ĐỘ GIÓ",
-                value = windFormatter(weather.windSpeedMps),
-                subtitle = weather.windDirectionDeg?.let { "Hướng $it°" } ?: "Gió nhẹ",
-                icon = Icons.Default.Air,
-                iconColor = Color(0xFF26A69A),
-                modifier = Modifier.weight(1f),
-            )
-            WeatherDetailCard(
-                title = "ÁP SUẤT",
-                value = "${weather.pressureHpa.toInt()} hPa",
-                subtitle = "Áp suất khí quyển",
-                icon = Icons.Default.Speed,
-                iconColor = Color(0xFFAB47BC),
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-@Composable
-fun CoordinatesCard(
-    weather: CurrentWeather,
-    modifier: Modifier = Modifier,
-) {
-    ElevatedCard(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f),
+            // Wind Card
+            GlassCard(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(140.dp),
+                cornerRadius = 22.dp,
+                backgroundColor = Color(0x331E293B),
+                borderColor = Color(0x3394A3B8)
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                    modifier = Modifier.size(36.dp),
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.Navigation,
-                            contentDescription = "Coordinates",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
+                            imageVector = Icons.Outlined.Air,
+                            contentDescription = null,
+                            tint = Color(0xCCFFFFFF),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Tốc độ gió",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = windFormatter(weather.windSpeedMps),
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = weather.windDirectionDeg?.let { "Hướng $it°" } ?: "Gió nhẹ",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Tọa độ địa lý",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = "Vĩ độ: ${weather.latitude?.let { String.format(Locale.US, "%.3f", it) } ?: "--"} | Kinh độ: ${weather.longitude?.let { String.format(Locale.US, "%.3f", it) } ?: "--"}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+            }
+
+            // Humidity Card
+            GlassCard(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(140.dp),
+                cornerRadius = 22.dp,
+                backgroundColor = Color(0x331E293B),
+                borderColor = Color(0x3394A3B8)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.WaterDrop,
+                            contentDescription = null,
+                            tint = Color(0xCCFFFFFF),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Độ ẩm",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = "${weather.humidityPercent}%",
+                            color = Color.White,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (weather.humidityPercent > 70) "Độ ẩm cao" else "Dễ chịu",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Row 3: Pressure + Coordinates
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Pressure Card
+            GlassCard(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(130.dp),
+                cornerRadius = 22.dp,
+                backgroundColor = Color(0x331E293B),
+                borderColor = Color(0x3394A3B8)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Compress,
+                            contentDescription = null,
+                            tint = Color(0xCCFFFFFF),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Áp suất",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = "${weather.pressureHpa.toInt()} hPa",
+                            color = Color.White,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Ổn định",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+
+            // Coordinates Card
+            GlassCard(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(130.dp),
+                cornerRadius = 22.dp,
+                backgroundColor = Color(0x331E293B),
+                borderColor = Color(0x3394A3B8)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Navigation,
+                            contentDescription = null,
+                            tint = Color(0xCCFFFFFF),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Tọa độ GPS",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = "Lat: ${weather.latitude?.let { String.format(Locale.US, "%.2f", it) } ?: "--"}",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Lon: ${weather.longitude?.let { String.format(Locale.US, "%.2f", it) } ?: "--"}",
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
         }
@@ -421,63 +992,65 @@ fun CoordinatesCard(
 }
 
 @Composable
-private fun LoadingWeatherCard() {
-    ElevatedCard(
-        shape = RoundedCornerShape(20.dp),
+private fun LoadingGlassHeroCard() {
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 24.dp,
+        backgroundColor = Color(0x331E293B),
+        borderColor = Color(0x3394A3B8)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(40.dp),
+                .padding(48.dp)
         ) {
             CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 3.5.dp,
+                color = Color(0xFF38BDF8),
+                strokeWidth = 3.5.dp
             )
             Text(
                 text = "Đang tải dữ liệu thời tiết mới nhất...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
             )
         }
     }
 }
 
 @Composable
-private fun ErrorWeatherCard(
+private fun ErrorGlassHeroCard(
     message: String,
-    onRetry: () -> Unit,
+    onRetry: () -> Unit
 ) {
-    ElevatedCard(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 24.dp,
+        backgroundColor = Color(0x4D7F1D1D),
+        borderColor = Color(0x80EF4444)
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(20.dp)
         ) {
             Text(
                 text = "Không thể tải dữ liệu thời tiết",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onErrorContainer,
+                color = Color(0xFFFCA5A5),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
             )
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f),
+                color = Color(0xFFFEE2E2),
+                fontSize = 14.sp
             )
             FilledTonalButton(
                 onClick = onRetry,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
@@ -485,4 +1058,60 @@ private fun ErrorWeatherCard(
             }
         }
     }
+}
+
+@Composable
+private fun CitySelectorDialog(
+    currentCityName: String,
+    cities: List<CityLocation>,
+    onDismiss: () -> Unit,
+    onSelect: (CityLocation) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Chọn địa điểm", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                cities.forEach { city ->
+                    val isSelected = city.name.equals(currentCityName, ignoreCase = true)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) Color(0x220284C7) else Color.Transparent)
+                            .clickable { onSelect(city) }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = city.name,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) Color(0xFF0284C7) else Color.Unspecified
+                            )
+                            Text(
+                                text = city.country,
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
+
+                        Text(
+                            text = "${city.currentTemp}°",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Đóng")
+            }
+        }
+    )
 }
