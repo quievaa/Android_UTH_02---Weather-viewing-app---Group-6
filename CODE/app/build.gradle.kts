@@ -53,8 +53,9 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // Location Services (Member 4)
+    // Location & Maps (100% Free Osmdroid + Play Services Location)
     implementation("com.google.android.gms:play-services-location:21.2.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     // DataStore cho Member 5 (Local Storage)
     implementation("androidx.datastore:datastore-preferences:1.1.1")

@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -12,6 +11,9 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.DailyForecast
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.HourlyForecast
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WeatherCondition
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.HomeScreenContent
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.SearchScreen
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.SplashScreen
@@ -33,6 +35,23 @@ private val mockWeather = CurrentWeather(
     latitude = 10.8231,
     longitude = 106.6297,
     iconCode = "01d",
+)
+
+private val mockHourlyList = listOf(
+    HourlyForecast("Bây giờ", 31, WeatherCondition.SUNNY, 10),
+    HourlyForecast("11:00", 32, WeatherCondition.SUNNY, 10),
+    HourlyForecast("12:00", 33, WeatherCondition.PARTLY_CLOUDY, 15),
+    HourlyForecast("13:00", 34, WeatherCondition.SUNNY, 5),
+    HourlyForecast("14:00", 33, WeatherCondition.PARTLY_CLOUDY, 20),
+    HourlyForecast("15:00", 32, WeatherCondition.LIGHT_RAIN, 60),
+    HourlyForecast("16:00", 31, WeatherCondition.RAIN, 75)
+)
+
+private val mockTenDayList = listOf(
+    DailyForecast("Hôm nay", "Hôm nay", 26, 33, WeatherCondition.SUNNY, 35, "Nắng đẹp nhẹ nhàng", 14, 72, 4, 7, 42),
+    DailyForecast("Thứ Ba", "Ngày mai", 25, 32, WeatherCondition.LIGHT_RAIN, 65, "Mưa rào nhẹ buổi chiều", 16, 80, 8, 5, 35),
+    DailyForecast("Thứ Tư", "Ngày kia", 27, 34, WeatherCondition.SUNNY, 10, "Nắng rực rỡ", 12, 65, 0, 9, 55),
+    DailyForecast("Thứ Năm", "3 ngày tới", 24, 31, WeatherCondition.THUNDERSTORM, 85, "Mưa dông bão", 28, 88, 28, 4, 30)
 )
 
 // Hàm giả lập định dạng cho Preview
@@ -60,6 +79,9 @@ private fun HomeScreenPortraitPreview() {
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
                 isRefreshing = false,
+                isFavorite = true,
+                hourlyList = mockHourlyList,
+                tenDayList = mockTenDayList,
                 tempFormatter = ::mockTempFormatter,
                 windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
@@ -84,6 +106,9 @@ private fun HomeScreenDarkModePreview() {
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
                 isRefreshing = false,
+                isFavorite = true,
+                hourlyList = mockHourlyList,
+                tenDayList = mockTenDayList,
                 tempFormatter = ::mockTempFormatter,
                 windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
@@ -108,6 +133,9 @@ private fun HomeScreenLandscapePreview() {
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
                 isRefreshing = false,
+                isFavorite = false,
+                hourlyList = mockHourlyList,
+                tenDayList = mockTenDayList,
                 tempFormatter = ::mockTempFormatter,
                 windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
@@ -132,6 +160,9 @@ private fun HomeScreenTabletPreview() {
                 contentPadding = PaddingValues(top = 16.dp),
                 uiState = WeatherUiState.Success(mockWeather),
                 isRefreshing = false,
+                isFavorite = false,
+                hourlyList = mockHourlyList,
+                tenDayList = mockTenDayList,
                 tempFormatter = ::mockTempFormatter,
                 windFormatter = ::mockWindFormatter,
                 onForecastClick = {},
