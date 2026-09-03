@@ -1,14 +1,15 @@
 package com.example.android_uth_02_weather_viewing_app_group6.data.repository
 
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.GeocodingApiService
+import com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.RetrofitClient
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.WeatherApiService
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.GeocodingResult
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OpenMeteoWeatherResponse
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
 
 class WeatherRepository(
-    private val weatherApi: WeatherApiService,
-    private val geocodingApi: GeocodingApiService,
+    private val weatherApi: WeatherApiService = RetrofitClient.weatherApi,
+    private val geocodingApi: GeocodingApiService = RetrofitClient.geocodingApi,
 ) {
 
     suspend fun getCurrentWeather(cityName: String): Result<CurrentWeather> {

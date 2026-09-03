@@ -7,7 +7,7 @@ import com.example.android_uth_02_weather_viewing_app_group6.data.repository.Wea
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherViewModel
 
 class WeatherViewModelFactory(
-    private val repository: WeatherRepository,
+    private val repository: WeatherRepository = WeatherRepository(),
     private val appPreferences: AppPreferences? = null,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
