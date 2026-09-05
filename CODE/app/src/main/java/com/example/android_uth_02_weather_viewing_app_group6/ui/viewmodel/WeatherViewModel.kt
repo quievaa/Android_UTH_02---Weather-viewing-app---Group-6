@@ -18,6 +18,8 @@ import com.example.android_uth_02_weather_viewing_app_group6.ui.model.TripRoute
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.UVIndex
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WeatherCondition
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WindInfo
+import com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.ApiConfig
+import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.ApiHealthStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +51,56 @@ class WeatherViewModel(
 
     private val _windUnit = MutableStateFlow("m/s")
     val windUnit: StateFlow<String> = _windUnit.asStateFlow()
+
+    // Multi-API & Resiliency State
+    private val _isMultiApiEnabled = MutableStateFlow(true)
+    val isMultiApiEnabled: StateFlow<Boolean> = _isMultiApiEnabled.asStateFlow()
+
+    private val _primaryApiProvider = MutableStateFlow("OPEN_METEO")
+    val primaryApiProvider: StateFlow<String> = _primaryApiProvider.asStateFlow()
+
+    private val _weatherApiKey = MutableStateFlow(ApiConfig.WEATHERAPI_KEY)
+    val weatherApiKey: StateFlow<String> = _weatherApiKey.asStateFlow()
+
+    private val _openWeatherKey = MutableStateFlow(ApiConfig.OPENWEATHER_API_KEY)
+    val openWeatherKey: StateFlow<String> = _openWeatherKey.asStateFlow()
+
+    // Custom API Endpoint State (No-Code Configuration)
+    private val _customEndpointUrl = MutableStateFlow("")
+    val customEndpointUrl: StateFlow<String> = _customEndpointUrl.asStateFlow()
+
+    private val _customEndpointName = MutableStateFlow("Custom API Server")
+    val customEndpointName: StateFlow<String> = _customEndpointName.asStateFlow()
+
+    private val _customEndpointEnabled = MutableStateFlow(false)
+    val customEndpointEnabled: StateFlow<Boolean> = _customEndpointEnabled.asStateFlow()
+
+    private val _customEndpointKey = MutableStateFlow("")
+    val customEndpointKey: StateFlow<String> = _customEndpointKey.asStateFlow()
+
+    private val _customEndpointFormat = MutableStateFlow("OPEN_WEATHER")
+    val customEndpointFormat: StateFlow<String> = _customEndpointFormat.asStateFlow()
+
+    private val _customEndpointTestResult = MutableStateFlow<ApiHealthStatus?>(null)
+    val customEndpointTestResult: StateFlow<ApiHealthStatus?> = _customEndpointTestResult.asStateFlow()
+
+    private val _isTestingCustomEndpoint = MutableStateFlow(false)
+    val isTestingCustomEndpoint: StateFlow<Boolean> = _isTestingCustomEndpoint.asStateFlow()
+
+    private val _apiHealthList = MutableStateFlow<List<ApiHealthStatus>>(emptyList())
+    val apiHealthList: StateFlow<List<ApiHealthStatus>> = _apiHealthList.asStateFlow()
+
+    private val _isCheckingApis = MutableStateFlow(false)
+    val isCheckingApis: StateFlow<Boolean> = _isCheckingApis.asStateFlow()
+
+    // iOS Style Location State
+    private val _isCurrentLocation = MutableStateFlow(false)
+    val isCurrentLocation: StateFlow<Boolean> = _isCurrentLocation.asStateFlow()
+
+    private val _locationSubName = MutableStateFlow("")
+    val locationSubName: StateFlow<String> = _locationSubName.asStateFlow()
+
+    var hasAutoFetchedLocation: Boolean = false
 
     val searchHistory: StateFlow<List<String>> = appPreferences?.searchHistory
         ?.stateIn(
@@ -251,6 +303,51 @@ class WeatherViewModel(
                     _windUnit.value = unit
                 }
             }
+            viewModelScope.launch {
+                appPreferences.isMultiApiEnabled.collect { enabled ->
+                    _isMultiApiEnabled.value = enabled
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.primaryApiProvider.collect { provider ->
+                    _primaryApiProvider.value = provider
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.weatherApiKey.collect { key ->
+                    _weatherApiKey.value = key.ifBlank { ApiConfig.WEATHERAPI_KEY }
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.openWeatherKey.collect { key ->
+                    _openWeatherKey.value = key.ifBlank { ApiConfig.OPENWEATHER_API_KEY }
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.customEndpointUrl.collect { url ->
+                    _customEndpointUrl.value = url
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.customEndpointName.collect { name ->
+                    _customEndpointName.value = name
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.customEndpointEnabled.collect { enabled ->
+                    _customEndpointEnabled.value = enabled
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.customEndpointKey.collect { key ->
+                    _customEndpointKey.value = key
+                }
+            }
+            viewModelScope.launch {
+                appPreferences.customEndpointFormat.collect { format ->
+                    _customEndpointFormat.value = format
+                }
+            }
         }
         loadCurrentWeather(lastCity)
     }
@@ -264,11 +361,25 @@ class WeatherViewModel(
 
         lastCity = city
         lastCoordinates = null
+        _isCurrentLocation.value = false
+        _locationSubName.value = ""
+        hasAutoFetchedLocation = true
 
         viewModelScope.launch {
             appPreferences?.addSearchQuery(city)
             _uiState.value = WeatherUiState.Loading
-            repository.getCurrentWeather(city)
+            repository.getCurrentWeather(
+                cityName = city,
+                isMultiApiEnabled = _isMultiApiEnabled.value,
+                primaryProvider = _primaryApiProvider.value,
+                customWeatherApiKey = _weatherApiKey.value,
+                customOpenWeatherKey = _openWeatherKey.value,
+                customEndpointUrl = _customEndpointUrl.value,
+                customEndpointName = _customEndpointName.value,
+                customEndpointEnabled = _customEndpointEnabled.value,
+                customEndpointKey = _customEndpointKey.value,
+                customEndpointFormat = _customEndpointFormat.value,
+            )
                 .onSuccess { _uiState.value = WeatherUiState.Success(it) }
                 .onFailure {
                     _uiState.value = WeatherUiState.Error(
@@ -282,7 +393,20 @@ class WeatherViewModel(
         lastCoordinates = Pair(latitude, longitude)
         viewModelScope.launch {
             _uiState.value = WeatherUiState.Loading
-            repository.getWeatherByCoordinates(latitude, longitude, cityName)
+            repository.getWeatherByCoordinates(
+                latitude = latitude,
+                longitude = longitude,
+                cityName = cityName,
+                isMultiApiEnabled = _isMultiApiEnabled.value,
+                primaryProvider = _primaryApiProvider.value,
+                customWeatherApiKey = _weatherApiKey.value,
+                customOpenWeatherKey = _openWeatherKey.value,
+                customEndpointUrl = _customEndpointUrl.value,
+                customEndpointName = _customEndpointName.value,
+                customEndpointEnabled = _customEndpointEnabled.value,
+                customEndpointKey = _customEndpointKey.value,
+                customEndpointFormat = _customEndpointFormat.value,
+            )
                 .onSuccess {
                     lastCity = it.cityName
                     _uiState.value = WeatherUiState.Success(it)
@@ -297,13 +421,35 @@ class WeatherViewModel(
 
     fun fetchLocationWeather(
         locationTracker: LocationTracker,
+        reverseGeocoder: com.example.android_uth_02_weather_viewing_app_group6.data.location.ReverseGeocoder? = null,
         onResult: (Boolean, String?) -> Unit = { _, _ -> },
     ) {
         viewModelScope.launch {
             _uiState.value = WeatherUiState.Loading
             val location = locationTracker.getCurrentLocation()
             if (location != null) {
-                repository.getWeatherByCoordinates(location.latitude, location.longitude, "Vị trí hiện tại")
+                // Resolve detailed district & city name like iOS Apple Weather
+                val resolvedPlace = reverseGeocoder?.resolveLocationName(location.latitude, location.longitude)
+                    ?: "Vị trí của tôi"
+                val displayTitle = "Vị trí của tôi"
+
+                _isCurrentLocation.value = true
+                _locationSubName.value = resolvedPlace
+
+                repository.getWeatherByCoordinates(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    cityName = displayTitle,
+                    isMultiApiEnabled = _isMultiApiEnabled.value,
+                    primaryProvider = _primaryApiProvider.value,
+                    customWeatherApiKey = _weatherApiKey.value,
+                    customOpenWeatherKey = _openWeatherKey.value,
+                    customEndpointUrl = _customEndpointUrl.value,
+                    customEndpointName = _customEndpointName.value,
+                    customEndpointEnabled = _customEndpointEnabled.value,
+                    customEndpointKey = _customEndpointKey.value,
+                    customEndpointFormat = _customEndpointFormat.value,
+                )
                     .onSuccess {
                         lastCity = it.cityName
                         lastCoordinates = Pair(location.latitude, location.longitude)
@@ -595,12 +741,154 @@ class WeatherViewModel(
         }
     }
 
+    fun toggleMultiApi() {
+        val next = !_isMultiApiEnabled.value
+        _isMultiApiEnabled.value = next
+        viewModelScope.launch {
+            appPreferences?.saveMultiApiEnabled(next)
+        }
+    }
+
+    fun setPrimaryApiProvider(provider: String) {
+        _primaryApiProvider.value = provider
+        viewModelScope.launch {
+            appPreferences?.savePrimaryApiProvider(provider)
+        }
+    }
+
+    fun saveCustomApiKeys(weatherKey: String, openWeatherKey: String) {
+        _weatherApiKey.value = weatherKey.trim()
+        _openWeatherKey.value = openWeatherKey.trim()
+        viewModelScope.launch {
+            appPreferences?.saveWeatherApiKey(weatherKey.trim())
+            appPreferences?.saveOpenWeatherKey(openWeatherKey.trim())
+        }
+    }
+
+    fun saveCustomEndpoint(
+        url: String,
+        name: String,
+        enabled: Boolean,
+        apiKey: String,
+        format: String
+    ) {
+        val trimmedUrl = url.trim()
+        val trimmedName = name.trim().ifBlank { "Custom API" }
+        _customEndpointUrl.value = trimmedUrl
+        _customEndpointName.value = trimmedName
+        _customEndpointEnabled.value = enabled
+        _customEndpointKey.value = apiKey.trim()
+        _customEndpointFormat.value = format
+
+        if (enabled && trimmedUrl.isNotBlank()) {
+            _primaryApiProvider.value = "CUSTOM_ENDPOINT"
+        } else if (_primaryApiProvider.value == "CUSTOM_ENDPOINT") {
+            _primaryApiProvider.value = "OPEN_METEO"
+        }
+
+        viewModelScope.launch {
+            appPreferences?.saveCustomEndpoint(trimmedUrl, trimmedName, enabled, apiKey.trim(), format)
+            if (enabled && trimmedUrl.isNotBlank()) {
+                appPreferences?.savePrimaryApiProvider("CUSTOM_ENDPOINT")
+            }
+        }
+    }
+
+    fun testCustomEndpoint(
+        url: String,
+        name: String,
+        apiKey: String,
+        format: String
+    ) {
+        viewModelScope.launch {
+            _isTestingCustomEndpoint.value = true
+            try {
+                val res = repository.pingCustomEndpoint(
+                    url = url.trim(),
+                    name = name.trim().ifBlank { "Custom API" },
+                    apiKey = apiKey.trim(),
+                    format = format
+                )
+                _customEndpointTestResult.value = res
+            } catch (e: Exception) {
+                _customEndpointTestResult.value = ApiHealthStatus(
+                    providerName = name,
+                    isOnline = false,
+                    latencyMs = 0,
+                    message = e.localizedMessage ?: "Lỗi kết nối"
+                )
+            } finally {
+                _isTestingCustomEndpoint.value = false
+            }
+        }
+    }
+
+    fun resetCustomEndpoint() {
+        _customEndpointUrl.value = ""
+        _customEndpointName.value = "Custom API Server"
+        _customEndpointEnabled.value = false
+        _customEndpointKey.value = ""
+        _customEndpointFormat.value = "OPEN_WEATHER"
+        _customEndpointTestResult.value = null
+        if (_primaryApiProvider.value == "CUSTOM_ENDPOINT") {
+            _primaryApiProvider.value = "OPEN_METEO"
+        }
+
+        viewModelScope.launch {
+            appPreferences?.resetCustomEndpoint()
+            appPreferences?.savePrimaryApiProvider("OPEN_METEO")
+        }
+    }
+
+    fun testAllApisHealth() {
+        viewModelScope.launch {
+            _isCheckingApis.value = true
+            try {
+                val results = repository.pingAllApis(
+                    customWeatherApiKey = _weatherApiKey.value,
+                    customOpenWeatherKey = _openWeatherKey.value,
+                    customEndpointUrl = _customEndpointUrl.value,
+                    customEndpointName = _customEndpointName.value,
+                    customEndpointEnabled = _customEndpointEnabled.value,
+                    customEndpointKey = _customEndpointKey.value,
+                    customEndpointFormat = _customEndpointFormat.value
+                ).map { status ->
+                    val isPrim = when (status.providerName) {
+                        "Open-Meteo" -> _primaryApiProvider.value == "OPEN_METEO"
+                        "WeatherAPI.com" -> _primaryApiProvider.value == "WEATHER_API"
+                        "OpenWeatherMap" -> _primaryApiProvider.value == "OPEN_WEATHER"
+                        _customEndpointName.value -> _primaryApiProvider.value == "CUSTOM_ENDPOINT"
+                        else -> false
+                    }
+                    status.copy(isPrimary = isPrim)
+                }
+                _apiHealthList.value = results
+            } catch (e: Exception) {
+                // Keep existing or empty
+            } finally {
+                _isCheckingApis.value = false
+            }
+        }
+    }
+
     fun retry() {
         val coords = lastCoordinates
         viewModelScope.launch {
             _isRefreshing.value = true
             if (coords != null) {
-                repository.getWeatherByCoordinates(coords.first, coords.second)
+                repository.getWeatherByCoordinates(
+                    latitude = coords.first,
+                    longitude = coords.second,
+                    isMultiApiEnabled = _isMultiApiEnabled.value,
+                    primaryProvider = _primaryApiProvider.value,
+                    customWeatherApiKey = _weatherApiKey.value,
+                    customOpenWeatherKey = _openWeatherKey.value,
+                    customEndpointUrl = _customEndpointUrl.value,
+                    customEndpointName = _customEndpointName.value,
+                    customEndpointEnabled = _customEndpointEnabled.value,
+                    customEndpointKey = _customEndpointKey.value,
+                    customEndpointFormat = _customEndpointFormat.value,
+                )
                     .onSuccess {
                         lastCity = it.cityName
                         _uiState.value = WeatherUiState.Success(it)
@@ -611,7 +899,18 @@ class WeatherViewModel(
                         )
                     }
             } else {
-                repository.getCurrentWeather(lastCity)
+                repository.getCurrentWeather(
+                    cityName = lastCity,
+                    isMultiApiEnabled = _isMultiApiEnabled.value,
+                    primaryProvider = _primaryApiProvider.value,
+                    customWeatherApiKey = _weatherApiKey.value,
+                    customOpenWeatherKey = _openWeatherKey.value,
+                    customEndpointUrl = _customEndpointUrl.value,
+                    customEndpointName = _customEndpointName.value,
+                    customEndpointEnabled = _customEndpointEnabled.value,
+                    customEndpointKey = _customEndpointKey.value,
+                    customEndpointFormat = _customEndpointFormat.value,
+                )
                     .onSuccess { _uiState.value = WeatherUiState.Success(it) }
                     .onFailure {
                         _uiState.value = WeatherUiState.Error(

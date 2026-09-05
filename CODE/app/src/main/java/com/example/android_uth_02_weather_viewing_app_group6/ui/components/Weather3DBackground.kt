@@ -9,6 +9,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.android_uth_02_weather_viewing_app_group6.R
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WeatherCondition
 import kotlinx.coroutines.delay
 import kotlin.math.PI
@@ -223,6 +227,16 @@ fun Weather3DBackground(
         }
     }
 
+    val isRainOrTransitional = condition in listOf(
+        WeatherCondition.LIGHT_RAIN,
+        WeatherCondition.RAIN,
+        WeatherCondition.HEAVY_RAIN,
+        WeatherCondition.THUNDERSTORM,
+        WeatherCondition.CLOUDY,
+        WeatherCondition.OVERCAST
+    )
+    val isSunnyDay = !isNight && (condition == WeatherCondition.SUNNY || condition == WeatherCondition.PARTLY_CLOUDY)
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -240,86 +254,86 @@ fun Weather3DBackground(
                 )
             }
     ) {
+        // 1. High-Resolution Weather Background Image
+        if (isRainOrTransitional) {
+            Image(
+                painter = painterResource(id = R.drawable.troi_mua),
+                contentDescription = "Trời mưa / Chuyển mưa",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (isSunnyDay) {
+            Image(
+                painter = painterResource(id = R.drawable.troi_nang),
+                contentDescription = "Trời nắng",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // 2. 3D Particle & Atmosphere Simulation Overlay (Three.js-style Canvas module)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
             val t = timeLoop * 0.05f
 
-            // 1. Dynamic Atmosphere Sky Gradient
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(animatedTop, animatedMid, animatedBot),
-                    startY = 0f,
-                    endY = h
+            // Atmospheric Vignette & Contrast Overlay for foreground readability
+            if (isRainOrTransitional || isSunnyDay) {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0x550B132B),
+                            Color(0x221C2541),
+                            Color(0x770B132B)
+                        ),
+                        startY = 0f,
+                        endY = h
+                    )
                 )
-            )
+            } else {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(animatedTop, animatedMid, animatedBot),
+                        startY = 0f,
+                        endY = h
+                    )
+                )
+            }
 
-            // 2. 3D Stars & Moon (Night Mode)
+            // 3D Stars & Moon (Night Mode)
             if (isNight || condition == WeatherCondition.NIGHT_CLEAR || condition == WeatherCondition.NIGHT_CLOUDY) {
                 draw3DStarfield(stars, w, h, t, cameraOffsetX, cameraOffsetY)
                 draw3DMoon(w, h, sunPulse, cameraOffsetX, cameraOffsetY)
             }
 
-            // 3. 3D Sun & Rays & Dust Motes (Day / Sunny / Partly Cloudy)
-            if (!isNight && (condition == WeatherCondition.SUNNY || condition == WeatherCondition.PARTLY_CLOUDY)) {
+            // 3D Sun & Rays & Dust Motes (Sunny Day)
+            if (isSunnyDay) {
                 draw3DSun(w, h, sunPulse, sunRayRotation, cameraOffsetX, cameraOffsetY)
                 draw3DSunDustMotes(sunMotes, w, h, t, cameraOffsetX, cameraOffsetY)
             }
 
-            // 4. 3D Volumetric Floating Clouds
-            val hasClouds = condition in listOf(
-                WeatherCondition.CLOUDY,
-                WeatherCondition.OVERCAST,
-                WeatherCondition.PARTLY_CLOUDY,
-                WeatherCondition.RAIN,
-                WeatherCondition.LIGHT_RAIN,
-                WeatherCondition.HEAVY_RAIN,
-                WeatherCondition.THUNDERSTORM,
-                WeatherCondition.NIGHT_CLOUDY
-            )
-            if (hasClouds) {
-                draw3DVolumetricClouds(
-                    w = w,
-                    h = h,
-                    t = t,
-                    condition = condition,
-                    isNight = isNight,
-                    windSpeed = windSpeedMps.toFloat(),
-                    camX = cameraOffsetX,
-                    camY = cameraOffsetY
-                )
-            }
-
-            // 5. 3D Rain Streaks & Splash Ripples
-            val isRaining = condition in listOf(
-                WeatherCondition.LIGHT_RAIN,
-                WeatherCondition.RAIN,
-                WeatherCondition.HEAVY_RAIN,
-                WeatherCondition.THUNDERSTORM
-            )
-            if (isRaining) {
+            // 3D Rain Streaks & Splash Ripples (Rain & Transitional conditions)
+            if (isRainOrTransitional) {
+                val isHeavy = condition == WeatherCondition.HEAVY_RAIN || condition == WeatherCondition.THUNDERSTORM
                 draw3DRainSystem(
                     rainDrops = rainDrops,
                     splashes = splashes,
                     w = w,
                     h = h,
                     windSpeed = windSpeedMps.toFloat(),
-                    heavy = condition == WeatherCondition.HEAVY_RAIN || condition == WeatherCondition.THUNDERSTORM,
+                    heavy = isHeavy,
                     camX = cameraOffsetX,
                     camY = cameraOffsetY
                 )
             }
 
-            // 6. Thunderstorm Lightning Bolt & Ambient Flash
+            // Thunderstorm Lightning Bolt & Ambient Flash
             if (condition == WeatherCondition.THUNDERSTORM && currentLightning != null) {
                 drawLightning(currentLightning!!, w, h)
             }
             if (lightningFlashAlpha > 0.05f) {
                 drawRect(color = Color(0xFF93C5FD).copy(alpha = lightningFlashAlpha * 0.45f))
             }
-
-            // 7. Bottom Mountain / Horizon 3D Silhouette
-            draw3DHorizonSilhouettes(w, h, isNight, condition, cameraOffsetX, cameraOffsetY)
         }
     }
 }

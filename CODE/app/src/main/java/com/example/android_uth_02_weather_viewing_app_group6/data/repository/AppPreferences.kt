@@ -3,6 +3,7 @@ package com.example.android_uth_02_weather_viewing_app_group6.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -23,6 +24,19 @@ class AppPreferences(private val context: Context) {
         val KEY_WIND_UNIT = stringPreferencesKey("wind_unit")
         val KEY_FAVORITES = stringPreferencesKey("favorite_cities")
         val KEY_SEARCH_HISTORY = stringPreferencesKey("search_history")
+
+        // API Resiliency & Multi-API Settings
+        val KEY_MULTI_API_ENABLED = booleanPreferencesKey("multi_api_enabled")
+        val KEY_PRIMARY_API_PROVIDER = stringPreferencesKey("primary_api_provider")
+        val KEY_WEATHER_API_KEY = stringPreferencesKey("weather_api_key")
+        val KEY_OPEN_WEATHER_KEY = stringPreferencesKey("open_weather_key")
+
+        // Custom API Endpoint Settings (No-Code Configuration)
+        val KEY_CUSTOM_ENDPOINT_URL = stringPreferencesKey("custom_endpoint_url")
+        val KEY_CUSTOM_ENDPOINT_NAME = stringPreferencesKey("custom_endpoint_name")
+        val KEY_CUSTOM_ENDPOINT_ENABLED = booleanPreferencesKey("custom_endpoint_enabled")
+        val KEY_CUSTOM_ENDPOINT_KEY = stringPreferencesKey("custom_endpoint_key")
+        val KEY_CUSTOM_ENDPOINT_FORMAT = stringPreferencesKey("custom_endpoint_format")
     }
 
     // Đơn vị nhiệt độ (°C / °F)
@@ -44,6 +58,98 @@ class AppPreferences(private val context: Context) {
     suspend fun saveWindUnit(unit: String) {
         context.dataStore.edit { prefs ->
             prefs[KEY_WIND_UNIT] = unit
+        }
+    }
+
+    // Cấu hình Multi-API (Chạy song song dự phòng)
+    val isMultiApiEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_MULTI_API_ENABLED] ?: true
+    }
+
+    suspend fun saveMultiApiEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_MULTI_API_ENABLED] = enabled
+        }
+    }
+
+    // Nhà cung cấp chính (OPEN_METEO, WEATHER_API, OPEN_WEATHER, CUSTOM_ENDPOINT)
+    val primaryApiProvider: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_PRIMARY_API_PROVIDER] ?: "OPEN_METEO"
+    }
+
+    suspend fun savePrimaryApiProvider(provider: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_PRIMARY_API_PROVIDER] = provider
+        }
+    }
+
+    // API Key tùy chỉnh cho các dịch vụ mặc định
+    val weatherApiKey: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_WEATHER_API_KEY] ?: ""
+    }
+
+    suspend fun saveWeatherApiKey(key: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_WEATHER_API_KEY] = key
+        }
+    }
+
+    val openWeatherKey: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_OPEN_WEATHER_KEY] ?: ""
+    }
+
+    suspend fun saveOpenWeatherKey(key: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_OPEN_WEATHER_KEY] = key
+        }
+    }
+
+    // ========================================================
+    // Cấu hình Custom API Endpoint (Thay đổi API không cần code)
+    // ========================================================
+    val customEndpointUrl: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CUSTOM_ENDPOINT_URL] ?: ""
+    }
+
+    val customEndpointName: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CUSTOM_ENDPOINT_NAME] ?: "Custom API Server"
+    }
+
+    val customEndpointEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CUSTOM_ENDPOINT_ENABLED] ?: false
+    }
+
+    val customEndpointKey: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CUSTOM_ENDPOINT_KEY] ?: ""
+    }
+
+    val customEndpointFormat: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CUSTOM_ENDPOINT_FORMAT] ?: "OPEN_WEATHER" // OPEN_WEATHER, OPEN_METEO, WEATHER_API
+    }
+
+    suspend fun saveCustomEndpoint(
+        url: String,
+        name: String,
+        enabled: Boolean,
+        apiKey: String,
+        format: String
+    ) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_CUSTOM_ENDPOINT_URL] = url.trim()
+            prefs[KEY_CUSTOM_ENDPOINT_NAME] = name.trim().ifBlank { "Custom API Server" }
+            prefs[KEY_CUSTOM_ENDPOINT_ENABLED] = enabled
+            prefs[KEY_CUSTOM_ENDPOINT_KEY] = apiKey.trim()
+            prefs[KEY_CUSTOM_ENDPOINT_FORMAT] = format
+        }
+    }
+
+    suspend fun resetCustomEndpoint() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(KEY_CUSTOM_ENDPOINT_URL)
+            prefs.remove(KEY_CUSTOM_ENDPOINT_NAME)
+            prefs.remove(KEY_CUSTOM_ENDPOINT_ENABLED)
+            prefs.remove(KEY_CUSTOM_ENDPOINT_KEY)
+            prefs.remove(KEY_CUSTOM_ENDPOINT_FORMAT)
         }
     }
 

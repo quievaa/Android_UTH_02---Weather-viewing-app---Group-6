@@ -19,4 +19,5 @@ data class CurrentWeather(
     val latitude: Double?,
     val longitude: Double?,
     val iconCode: String?,
+    val apiProvider: String = "Open-Meteo",
 )
