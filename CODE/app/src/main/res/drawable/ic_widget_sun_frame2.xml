@@ -1,0 +1,24 @@
+﻿<!-- Sun Frame 2 (Pulsing Glow Flare) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="100dp"
+    android:viewportWidth="120"
+    android:viewportHeight="100">
+  <!-- Outer Glow Halo -->
+  <path
+      android:pathData="M70,45m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0"
+      android:fillColor="#33FFD54F"/>
+  <!-- Sun Core -->
+  <path
+      android:pathData="M70,45m-21,0a21,21 0,1 1,42 0a21,21 0,1 1,-42 0"
+      android:fillColor="#FF8F00"/>
+  <path
+      android:pathData="M70,45m-16,0a16,16 0,1 1,32 0a16,16 0,1 1,-32 0"
+      android:fillColor="#FFF59D"/>
+  <!-- Sun Rays Long Flare -->
+  <path
+      android:pathData="M70,10 L70,20 M70,70 L70,80 M35,45 L45,45 M95,45 L105,45 M45,20 L52,27 M88,63 L95,70 M45,70 L52,63 M88,27 L95,20"
+      android:strokeWidth="4.0"
+      android:strokeColor="#FFB300"
+      android:strokeLineCap="round"/>
+</vector>

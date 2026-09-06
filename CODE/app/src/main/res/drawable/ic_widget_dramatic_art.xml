@@ -1,0 +1,63 @@
+﻿<!-- Clean Pure Vector: Dramatic 3D Storm Cloud with Rain & Snow (100% RemoteViews Compatible) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="100dp"
+    android:viewportWidth="120"
+    android:viewportHeight="100">
+
+  <!-- Cloud Dark Shadow Base -->
+  <path
+      android:pathData="M95,62 H25 C15,62 8,54 8,44 C8,35.5 14,28.5 22.5,27 C25.5,16 35.5,8 48,8 C60,8 70.5,15.5 73.5,26 C79.5,26.5 84.5,30.5 87,36 C97,36.5 105,45 105,55 C105,59 101,62 95,62 Z"
+      android:fillColor="#3A4D63"/>
+
+  <!-- Mid Cloud Layer -->
+  <path
+      android:pathData="M92,58 H22 C13,58 6,51 6,42 C6,34.2 11.5,27.8 19.2,26.5 C22,15.5 32,7.5 44,7.5 C55.5,7.5 65.5,14.8 68.5,25 C74,25.5 78.5,29 81,34 C90.5,34.5 98,42 98,51.5 C98,55.1 95.5,58 92,58 Z"
+      android:fillColor="#7B92A8"/>
+
+  <!-- Top Bright Cloud Highlight -->
+  <path
+      android:pathData="M88,52 H26 C18,52 12,46 12,38 C12,31.2 17,25.8 23.5,24.5 C26,14.5 35,7 46,7 C56.5,7 65.5,13.8 68,23 C73,23.5 77,26.5 79,31 C87.5,31.5 94,38 94,46.5 C94,50 91.5,52 88,52 Z"
+      android:fillColor="#ECEFF1"/>
+
+  <!-- Fluffy White Puffs -->
+  <path
+      android:pathData="M46,7 C36,7 28,14 26,23 C32,23 38,20 44,16 C50,20 56,22 64,22 C66,13.5 57,7 46,7 Z"
+      android:fillColor="#FFFFFF"/>
+  <path
+      android:pathData="M78,32 C86,32.5 92,38 92,45 C86,45 80,41 77,37 C77.5,35 78,33 78,32 Z"
+      android:fillColor="#FFFFFF"/>
+
+  <!-- Glowing Raindrops -->
+  <path
+      android:pathData="M52,65 Q50,75 48,79 Q52,79 52,76 Z"
+      android:fillColor="#90CAF9"/>
+  <path
+      android:pathData="M68,62 Q66,74 64,79 Q68,79 68,75 Z"
+      android:fillColor="#BBDEFB"/>
+  <path
+      android:pathData="M84,65 Q82,75 80,79 Q84,79 84,76 Z"
+      android:fillColor="#90CAF9"/>
+
+  <!-- Snowflake 1 (Left) -->
+  <path
+      android:pathData="M38,70 L38,82 M32,76 L44,76 M33.8,71.8 L42.2,80.2 M33.8,80.2 L42.2,71.8"
+      android:strokeWidth="1.5"
+      android:strokeColor="#FFFFFF"
+      android:strokeLineCap="round"/>
+
+  <!-- Snowflake 2 (Center small) -->
+  <path
+      android:pathData="M56,76 L56,86 M51,81 L61,81 M52.5,77.5 L59.5,84.5 M52.5,84.5 L59.5,77.5"
+      android:strokeWidth="1.3"
+      android:strokeColor="#E0F7FA"
+      android:strokeLineCap="round"/>
+
+  <!-- Snowflake 3 (Right large) -->
+  <path
+      android:pathData="M98,66 L98,82 M90,74 L106,74 M92.3,68.3 L103.7,79.7 M92.3,79.7 L103.7,68.3"
+      android:strokeWidth="1.6"
+      android:strokeColor="#FFFFFF"
+      android:strokeLineCap="round"/>
+
+</vector>
