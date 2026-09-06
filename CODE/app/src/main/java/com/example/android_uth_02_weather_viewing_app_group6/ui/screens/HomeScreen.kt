@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.GlassCard
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.TemperatureRangeBar
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.VideoWeatherBackground
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.Weather3DBackground
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.WeatherIcon
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.CityLocation
@@ -250,12 +251,9 @@ fun HomeScreenContent(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Dynamic Interactive 3D Three.js Weather Simulation Background
-        Weather3DBackground(
-            condition = weatherCond,
-            isNight = isNight,
-            windSpeedMps = windSpeed,
-            temperatureC = currentTemp
+        // Dynamic Live Video Weather Background from Assets (Nắng, Mưa, Chuyển mưa, Trời sáng)
+        VideoWeatherBackground(
+            condition = weatherCond
         )
 
         PullToRefreshBox(
@@ -615,7 +613,7 @@ private fun HourlyForecastCard(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                items(hourlyForecast) { item ->
+                items(items = hourlyForecast, key = { it.time }) { item ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {

@@ -57,6 +57,10 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.2.0")
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
+    // Media3 ExoPlayer for Dynamic Video Background
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
+
     // DataStore cho Member 5 (Local Storage)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
