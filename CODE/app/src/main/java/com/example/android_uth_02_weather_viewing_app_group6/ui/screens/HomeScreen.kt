@@ -67,7 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.GlassCard
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.TemperatureRangeBar
-import com.example.android_uth_02_weather_viewing_app_group6.ui.components.Weather3DBackground
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.VideoWeatherBackground
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.WeatherIcon
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.CityLocation
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.DailyForecast
@@ -250,12 +250,9 @@ fun HomeScreenContent(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Dynamic Native 3D Weather Background (Silky smooth, high performance, no lag)
-        Weather3DBackground(
-            condition = weatherCond,
-            isNight = isNight,
-            windSpeedMps = windSpeed,
-            temperatureC = currentTemp
+        // Dynamic Live Video Weather Background from Assets (Nắng, Mưa, Chuyển mưa, Mây bay)
+        VideoWeatherBackground(
+            condition = weatherCond
         )
 
         PullToRefreshBox(
