@@ -46,6 +46,9 @@ fun OsmdroidRadarMapView(
     cityName: String,
     selectedLayer: RadarLayer,
     zoomLevel: Float,
+    humidityPercent: Int? = null,
+    temperatureC: Double? = null,
+    weatherDescription: String? = null,
     apiKey: String = "8aa0ba046904f17e164ed03a89638b37",
     modifier: Modifier = Modifier
 ) {
@@ -53,6 +56,20 @@ fun OsmdroidRadarMapView(
     var mapViewRef by remember { mutableStateOf<MapView?>(null) }
     var weatherOverlayRef by remember { mutableStateOf<TilesOverlay?>(null) }
     var cityMarkerRef by remember { mutableStateOf<Marker?>(null) }
+
+    fun buildMarkerSnippet(): String = buildString {
+        if (humidityPercent != null && temperatureC != null) {
+            append("💧 Độ ẩm: $humidityPercent%   🌡️ ${temperatureC.toInt()}°C\n")
+        } else if (humidityPercent != null) {
+            append("💧 Độ ẩm: $humidityPercent%\n")
+        } else if (temperatureC != null) {
+            append("🌡️ ${temperatureC.toInt()}°C\n")
+        }
+        if (!weatherDescription.isNullOrBlank()) {
+            append("$weatherDescription • ")
+        }
+        append("%.4f, %.4f".format(latitude, longitude))
+    }
 
     fun ensureOsmdroidConfig(ctx: Context) {
         val basePath = File(ctx.cacheDir, "osmdroid")
@@ -64,7 +81,7 @@ fun OsmdroidRadarMapView(
             load(ctx, prefs)
             osmdroidBasePath = basePath
             osmdroidTileCache = tileCache
-            userAgentValue = ctx.packageName
+            userAgentValue = "UTH_Weather_Viewing_App_Group6/1.0 (contact: student@uth.edu.vn; Android Client; UTH Ho Chi Minh City)"
             userAgentHttpHeader = "User-Agent"
         }
     }
@@ -91,7 +108,7 @@ fun OsmdroidRadarMapView(
         }
     }
 
-    LaunchedEffect(latitude, longitude, zoomLevel) {
+    LaunchedEffect(latitude, longitude, zoomLevel, humidityPercent, temperatureC, weatherDescription) {
         val map = mapViewRef
         if (map != null) {
             val geoPoint = GeoPoint(latitude, longitude)
@@ -101,7 +118,7 @@ fun OsmdroidRadarMapView(
             if (marker != null) {
                 marker.position = geoPoint
                 marker.title = cityName
-                marker.snippet = "Tọa độ: %.4f, %.4f".format(latitude, longitude)
+                marker.snippet = buildMarkerSnippet()
                 marker.showInfoWindow()
             }
         }
@@ -167,7 +184,7 @@ fun OsmdroidRadarMapView(
                     val marker = Marker(this).apply {
                         position = centerPoint
                         title = cityName
-                        snippet = "Tọa độ: %.4f, %.4f".format(latitude, longitude)
+                        snippet = buildMarkerSnippet()
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                         showInfoWindow()
                     }

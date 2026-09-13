@@ -39,7 +39,7 @@ fun BottomFloatingNavBar(
     val navTabs = remember {
         listOf(
             WeatherScreen.Home,
-            WeatherScreen.Radar,
+            WeatherScreen.AiAssistant,
             WeatherScreen.TripPlanner,
             WeatherScreen.Forecast,
             WeatherScreen.Favorite,

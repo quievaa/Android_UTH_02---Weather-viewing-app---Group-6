@@ -19,13 +19,21 @@ class MainActivity : ComponentActivity() {
 
         val basePath = java.io.File(cacheDir, "osmdroid")
         val tileCache = java.io.File(basePath, "tiles")
+        try {
+            val flagFile = java.io.File(basePath, "v2_cache_cleared")
+            if (!flagFile.exists()) {
+                tileCache.deleteRecursively()
+                tileCache.mkdirs()
+                flagFile.createNewFile()
+            }
+        } catch (_: Exception) {}
         tileCache.mkdirs()
 
         Configuration.getInstance().apply {
             load(applicationContext, getSharedPreferences("osmdroid", MODE_PRIVATE))
             osmdroidBasePath = basePath
             osmdroidTileCache = tileCache
-            userAgentValue = packageName
+            userAgentValue = "UTH_Weather_Viewing_App_Group6/1.0 (contact: student@uth.edu.vn; Android Client; UTH Ho Chi Minh City)"
             userAgentHttpHeader = "User-Agent"
         }
 

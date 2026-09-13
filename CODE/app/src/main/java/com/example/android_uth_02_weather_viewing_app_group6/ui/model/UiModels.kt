@@ -89,6 +89,11 @@ data class CityLocation(
     val conditionDesc: String
 )
 
+data class RouteGeoPoint(
+    val latitude: Double,
+    val longitude: Double
+)
+
 data class RouteWaypoint(
     val time: String,
     val type: String, // "Start", "Waypoint", "Warning", "Arrival"
@@ -100,7 +105,9 @@ data class RouteWaypoint(
     val warningDesc: String? = null,
     val windSpeed: String = "15 km/h",
     val visibility: String = "10 km",
-    val rainAmount: String = "0 mm"
+    val rainAmount: String = "0 mm",
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0
 )
 
 data class TripRoute(
@@ -113,7 +120,10 @@ data class TripRoute(
     val hasSevereWarning: Boolean,
     val warningTitle: String,
     val warningDesc: String,
-    val waypoints: List<RouteWaypoint>
+    val waypoints: List<RouteWaypoint>,
+    val pathPoints: List<RouteGeoPoint> = emptyList(),
+    val vehicleType: String = "Ô tô",
+    val drivingAdvice: String = ""
 )
 
 enum class RadarLayer(val titleVi: String, val titleEn: String) {

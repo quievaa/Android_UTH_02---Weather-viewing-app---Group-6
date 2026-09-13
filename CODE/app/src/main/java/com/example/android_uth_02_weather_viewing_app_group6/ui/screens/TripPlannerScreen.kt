@@ -18,23 +18,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,13 +60,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.GlassCard
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.TripRouteMapView
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.Weather3DBackground
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.WeatherIcon
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.RouteWaypoint
@@ -68,10 +80,15 @@ fun TripPlannerScreen(
     viewModel: WeatherViewModel
 ) {
     val currentTrip by viewModel.currentTrip.collectAsState()
+    val availableTrips by viewModel.availableTrips.collectAsState()
     val isNavigating by viewModel.isNavigating.collectAsState()
     val activeWaypointIndex by viewModel.activeWaypointIndex.collectAsState()
     val roadAlertsEnabled by viewModel.roadAlertsEnabled.collectAsState()
-    var showRoutePicker by remember { mutableStateOf(false) }
+    val isPlanningTrip by viewModel.isPlanningTrip.collectAsState()
+    val tripPlanError by viewModel.tripPlanError.collectAsState()
+
+    var showRoutePlannerDialog by remember { mutableStateOf(false) }
+    var showMapPreview by remember { mutableStateOf(true) }
 
     val firstWaypoint = currentTrip.waypoints.firstOrNull()
     val tripCondition = firstWaypoint?.condition ?: WeatherCondition.PARTLY_CLOUDY
@@ -103,8 +120,89 @@ fun TripPlannerScreen(
                 OriginDestinationCard(
                     trip = currentTrip,
                     onSwap = { viewModel.swapOriginDestination() },
-                    onPickRoute = { showRoutePicker = true }
+                    onPickRoute = { showRoutePlannerDialog = true }
                 )
+            }
+
+            // Quick Map Toggle & Vehicle Info Bar
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Toggle Map Preview
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0x330F172A))
+                            .border(1.dp, Color(0x3338BDF8), RoundedCornerShape(12.dp))
+                            .clickable { showMapPreview = !showMapPreview }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Map,
+                            contentDescription = null,
+                            tint = Color(0xFF38BDF8),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (showMapPreview) "Ẩn bản đồ OSRM" else "Xem bản đồ OSRM",
+                            color = Color(0xFF38BDF8),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Vehicle Indicator Chip
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0x330F172A))
+                            .border(1.dp, Color(0x3394A3B8), RoundedCornerShape(12.dp))
+                            .clickable { showRoutePlannerDialog = true }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (currentTrip.vehicleType == "Xe máy") Icons.Outlined.TwoWheeler else Icons.Filled.DirectionsCar,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = currentTrip.vehicleType,
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // Interactive OSRM Route Map Preview
+            if (showMapPreview) {
+                item {
+                    TripRouteMapView(
+                        trip = currentTrip,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(230.dp)
+                    )
+                }
+            }
+
+            // Vehicle Safety Advice Card
+            if (currentTrip.drivingAdvice.isNotBlank()) {
+                item {
+                    VehicleSafetyAdviceCard(
+                        advice = currentTrip.drivingAdvice,
+                        vehicleType = currentTrip.vehicleType
+                    )
+                }
             }
 
             // Severe Road Warning Banner
@@ -182,16 +280,34 @@ fun TripPlannerScreen(
             }
         }
 
-        // Route Presets Picker Dialog
-        if (showRoutePicker) {
-            RoutePickerDialog(
+        // Route Presets & Custom OSRM Route Planner Dialog
+        if (showRoutePlannerDialog) {
+            CustomRoutePlannerDialog(
                 currentTrip = currentTrip,
-                availableTrips = viewModel.availableTrips,
-                onDismiss = { showRoutePicker = false },
-                onSelect = {
+                availableTrips = availableTrips,
+                isPlanning = isPlanningTrip,
+                errorMessage = tripPlanError,
+                onDismiss = {
+                    viewModel.clearTripPlanError()
+                    showRoutePlannerDialog = false
+                },
+                onSelectPreset = {
                     viewModel.selectTrip(it)
-                    showRoutePicker = false
-                }
+                    showRoutePlannerDialog = false
+                },
+                onPlanCustom = { origin, destination, vehicle ->
+                    viewModel.planCustomTrip(
+                        origin = origin,
+                        destination = destination,
+                        vehicleType = vehicle,
+                        userLocation = viewModel.currentUserLocation
+                    ) { success, _ ->
+                        if (success) {
+                            showRoutePlannerDialog = false
+                        }
+                    }
+                },
+                onClearError = { viewModel.clearTripPlanError() }
             )
         }
     }
@@ -331,7 +447,7 @@ private fun OriginDestinationCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Footer row: Depart: Now | Duration
+            // Footer row: Depart: Now | Duration | Distance | Vehicle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -357,9 +473,9 @@ private fun OriginDestinationCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Filled.DirectionsCar,
+                        imageVector = if (trip.vehicleType == "Xe máy") Icons.Outlined.TwoWheeler else Icons.Filled.DirectionsCar,
                         contentDescription = null,
-                        tint = Color(0xCCFFFFFF),
+                        tint = Color(0xFF38BDF8),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
@@ -370,6 +486,47 @@ private fun OriginDestinationCard(
                         fontWeight = FontWeight.Medium
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VehicleSafetyAdviceCard(
+    advice: String,
+    vehicleType: String
+) {
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 18.dp,
+        backgroundColor = Color(0x2B0F172A),
+        borderColor = Color(0x3338BDF8)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(
+                imageVector = if (vehicleType == "Xe máy") Icons.Outlined.TwoWheeler else Icons.Outlined.Security,
+                contentDescription = null,
+                tint = Color(0xFF38BDF8),
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = "Khuyến nghị an toàn di chuyển ($vehicleType)",
+                    color = Color(0xFF38BDF8),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = advice,
+                    color = Color(0xFFE2E8F0),
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
             }
         }
     }
@@ -606,48 +763,234 @@ private fun WaypointTimelineItem(
 }
 
 @Composable
-private fun RoutePickerDialog(
+private fun CustomRoutePlannerDialog(
     currentTrip: TripRoute,
     availableTrips: List<TripRoute>,
+    isPlanning: Boolean,
+    errorMessage: String?,
     onDismiss: () -> Unit,
-    onSelect: (TripRoute) -> Unit
+    onSelectPreset: (TripRoute) -> Unit,
+    onPlanCustom: (origin: String, destination: String, vehicle: String) -> Unit,
+    onClearError: () -> Unit
 ) {
+    var originText by remember { mutableStateOf(currentTrip.origin) }
+    var destText by remember { mutableStateOf(currentTrip.destination) }
+    var selectedVehicle by remember { mutableStateOf(currentTrip.vehicleType) }
+
+    val originSuggestions = listOf("UTH Cơ sở 1", "TP. Hồ Chí Minh", "Hà Nội", "Đà Nẵng")
+    val destSuggestions = listOf("UTH Cơ sở 2", "Đà Lạt", "Vũng Tàu", "Huế", "Hải Phòng")
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Chọn tuyến đường", fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Route,
+                    contentDescription = null,
+                    tint = Color(0xFF0284C7),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Lập lộ trình di chuyển (OSRM)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                availableTrips.forEach { trip ->
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Text(
+                        text = "Nhập điểm đi & đến bất kỳ, hệ thống OSRM sẽ tính toán tuyến đường và nội suy trạm thời tiết:",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        lineHeight = 16.sp
+                    )
+                }
+
+                // Error alert
+                if (errorMessage != null) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0x33EF4444))
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = "⚠️ $errorMessage",
+                                color = Color(0xFFEF4444),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // Origin TextField
+                item {
+                    OutlinedTextField(
+                        value = originText,
+                        onValueChange = {
+                            originText = it
+                            onClearError()
+                        },
+                        label = { Text("Điểm khởi hành") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                originText = "Vị trí của tôi"
+                                onClearError()
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.MyLocation,
+                                    contentDescription = "Vị trí của tôi",
+                                    tint = Color(0xFF0284C7)
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(originSuggestions) { suggestion ->
+                            FilterChip(
+                                selected = originText.equals(suggestion, ignoreCase = true),
+                                onClick = { originText = suggestion },
+                                label = { Text(suggestion, fontSize = 11.sp) }
+                            )
+                        }
+                    }
+                }
+
+                // Destination TextField
+                item {
+                    OutlinedTextField(
+                        value = destText,
+                        onValueChange = {
+                            destText = it
+                            onClearError()
+                        },
+                        label = { Text("Điểm đến") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(destSuggestions) { suggestion ->
+                            FilterChip(
+                                selected = destText.equals(suggestion, ignoreCase = true),
+                                onClick = { destText = suggestion },
+                                label = { Text(suggestion, fontSize = 11.sp) }
+                            )
+                        }
+                    }
+                }
+
+                // Vehicle Selection
+                item {
+                    Text(
+                        text = "Loại phương tiện di chuyển:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.DarkGray
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedVehicle == "Ô tô",
+                            onClick = { selectedVehicle = "Ô tô" },
+                            label = { Text("🚗 Ô tô", fontWeight = FontWeight.Medium) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = selectedVehicle == "Xe máy",
+                            onClick = { selectedVehicle = "Xe máy" },
+                            label = { Text("🛵 Xe máy", fontWeight = FontWeight.Medium) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                // Calculate Route Button
+                item {
+                    Button(
+                        onClick = {
+                            onPlanCustom(originText, destText, selectedVehicle)
+                        },
+                        enabled = !isPlanning && originText.isNotBlank() && destText.isNotBlank(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+                    ) {
+                        if (isPlanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Đang định tuyến OSRM...")
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Route,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Tìm tuyến & Phân tích thời tiết", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                // Divider and Presets list
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    HorizontalDivider(color = Color(0x1A000000))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Hoặc chọn nhanh lộ trình mẫu:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray
+                    )
+                }
+
+                items(availableTrips) { trip ->
                     val isSelected = trip.id == currentTrip.id
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) Color(0x220284C7) else Color(0x0D000000))
-                            .clickable { onSelect(trip) }
-                            .padding(12.dp)
+                            .background(if (isSelected) Color(0x220284C7) else Color(0x0A000000))
+                            .clickable { onSelectPreset(trip) }
+                            .padding(10.dp)
                     ) {
                         Text(
                             text = "${trip.origin}  ➔  ${trip.destination}",
                             fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
                             color = if (isSelected) Color(0xFF0284C7) else Color.Unspecified
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "${trip.durationText} • ${trip.distanceKm} km",
-                            fontSize = 12.sp,
+                            text = "${trip.vehicleType} • ${trip.durationText} • ${trip.distanceKm} km",
+                            fontSize = 11.sp,
                             color = Color.Gray
                         )
-                        if (trip.hasSevereWarning) {
-                            Text(
-                                text = "⚠️ ${trip.warningTitle}",
-                                fontSize = 11.sp,
-                                color = Color(0xFFEF4444),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
                     }
                 }
             }

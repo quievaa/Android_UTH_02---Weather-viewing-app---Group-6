@@ -15,7 +15,7 @@ object RetrofitClient {
         level = HttpLoggingInterceptor.Level.BASIC
     }
 
-    // Strict IPv4 DNS resolver to avoid IPv6 unreachable routing errors [2400:...]:443 on emulators/networks
+    // DNS IPv4
     private val ipv4FirstDns = object : Dns {
         override fun lookup(hostname: String): List<InetAddress> {
             return try {
@@ -82,4 +82,25 @@ object RetrofitClient {
             .build()
             .create(WeatherApiDotComService::class.java)
     }
+
+    // 4. OSRM (Open Source Routing Machine)
+    val osrmApi: OsrmApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://router.project-osrm.org/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(OsrmApiService::class.java)
+    }
+
+    // 5. Google Gemini Generative Language API
+    val geminiApi: GeminiApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://generativelanguage.googleapis.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GeminiApiService::class.java)
+    }
 }
+

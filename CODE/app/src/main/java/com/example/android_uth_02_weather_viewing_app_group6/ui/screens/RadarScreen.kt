@@ -23,8 +23,11 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Thermostat
+import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -38,8 +41,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -148,74 +153,220 @@ fun RadarScreen(
                 longitude = currentLon,
                 cityName = currentCityName,
                 selectedLayer = layer,
-                zoomLevel = zoom
+                zoomLevel = zoom,
+                humidityPercent = weatherSuccess?.humidityPercent,
+                temperatureC = weatherSuccess?.temperatureC,
+                weatherDescription = weatherSuccess?.description
             )
         }
 
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
                     start = 16.dp,
                     end = 16.dp,
                     top = contentPadding.calculateTopPadding() + 10.dp
-                ),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                )
         ) {
             Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xCC0E7490))
-                    .border(1.dp, Color(0x6638BDF8), RoundedCornerShape(24.dp))
-                    .clickable { requestGpsAndRecenter() }
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-                    .testTag("radar_location_chip"),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = "Location",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = currentCityName,
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            Box {
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(24.dp))
                         .background(Color(0xCC0E7490))
-                        .border(1.dp, Color(0x6638BDF8), CircleShape)
-                        .clickable { showLayerMenu = !showLayerMenu }
-                        .testTag("radar_layer_toggle_button"),
-                    contentAlignment = Alignment.Center
+                        .border(1.dp, Color(0x6638BDF8), RoundedCornerShape(24.dp))
+                        .clickable { requestGpsAndRecenter() }
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .testTag("radar_location_chip"),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Layers,
-                        contentDescription = "Layers",
+                        imageVector = Icons.Outlined.LocationOn,
+                        contentDescription = "Location",
                         tint = Color.White,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = currentCityName,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                if (showLayerMenu) {
-                    LayerMenuDropdown(
-                        selectedLayer = layer,
-                        onSelectLayer = {
-                            viewModel.selectRadarLayer(it)
-                            showLayerMenu = false
-                        },
-                        onDismiss = { showLayerMenu = false }
-                    )
+                Box(modifier = Modifier.zIndex(10f)) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xCC0E7490))
+                            .border(1.dp, Color(0x6638BDF8), CircleShape)
+                            .clickable { showLayerMenu = !showLayerMenu }
+                            .testTag("radar_layer_toggle_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Layers,
+                            contentDescription = "Layers",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
+                    if (showLayerMenu) {
+                        LayerMenuDropdown(
+                            selectedLayer = layer,
+                            onSelectLayer = {
+                                viewModel.selectRadarLayer(it)
+                                showLayerMenu = false
+                            },
+                            onDismiss = { showLayerMenu = false }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Weather & Humidity Floating Info Card
+            val humidityVal = weatherSuccess?.humidityPercent
+            val tempVal = weatherSuccess?.temperatureC?.toInt()
+            val windVal = weatherSuccess?.windSpeedMps
+            val descVal = weatherSuccess?.description
+
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("radar_humidity_card"),
+                cornerRadius = 18.dp,
+                backgroundColor = Color(0xD90F172A),
+                borderColor = Color(0x4D38BDF8)
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Humidity (Độ ẩm)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0x3338BDF8)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.WaterDrop,
+                                    contentDescription = "Độ ẩm",
+                                    tint = Color(0xFF38BDF8),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Độ ẩm",
+                                    color = Color(0x9994A3B8),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = if (humidityVal != null) "$humidityVal%" else "--",
+                                    color = Color(0xFF38BDF8),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        // Temperature (Nhiệt độ)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0x33F59E0B)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Thermostat,
+                                    contentDescription = "Nhiệt độ",
+                                    tint = Color(0xFFFBBF24),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Nhiệt độ",
+                                    color = Color(0x9994A3B8),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = if (tempVal != null) "$tempVal°C" else "--",
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        // Wind (Gió)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0x3310B981)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Air,
+                                    contentDescription = "Gió",
+                                    tint = Color(0xFF34D399),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Gió",
+                                    color = Color(0x9994A3B8),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = if (windVal != null) "%.1f m/s".format(windVal) else "--",
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    if (!descVal.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "🌧️ Lớp: ${layer.titleVi} • $descVal",
+                                color = Color(0xCCFFFFFF),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -246,6 +397,58 @@ fun RadarScreen(
                 onClick = { requestGpsAndRecenter() },
                 testTag = "radar_recenter"
             )
+        }
+
+        if (layer == RadarLayer.PRECIPITATION) {
+            GlassCard(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(
+                        start = 16.dp,
+                        bottom = contentPadding.calculateBottomPadding() + 175.dp
+                    )
+                    .testTag("radar_precipitation_legend"),
+                cornerRadius = 14.dp,
+                backgroundColor = Color(0xD90F172A),
+                borderColor = Color(0x3338BDF8)
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Text(
+                        text = "Lượng mưa (mm/h)",
+                        color = Color(0xCCFFFFFF),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(130.dp)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color(0xFF00E5FF),
+                                        Color(0xFF00E676),
+                                        Color(0xFFFFEA00),
+                                        Color(0xFFFF9100),
+                                        Color(0xFFFF1744)
+                                    )
+                                )
+                            )
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.width(130.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Nhẹ", color = Color(0x9994A3B8), fontSize = 9.sp)
+                        Text("Vừa", color = Color(0x9994A3B8), fontSize = 9.sp)
+                        Text("To", color = Color(0x9994A3B8), fontSize = 9.sp)
+                        Text("Rất to", color = Color(0x9994A3B8), fontSize = 9.sp)
+                    }
+                }
+            }
         }
 
         GlassCard(
@@ -376,23 +579,32 @@ private fun LayerMenuDropdown(
     Box(
         modifier = Modifier
             .padding(top = 52.dp)
+            .width(170.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xE60F172A))
+            .background(Color(0xF20F172A))
             .border(1.dp, Color(0x3338BDF8), RoundedCornerShape(16.dp))
             .padding(8.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             RadarLayer.entries.forEach { layerItem ->
                 val isSelected = layerItem == selectedLayer
+                val iconStr = when (layerItem) {
+                    RadarLayer.PRECIPITATION -> "🌧️"
+                    RadarLayer.WIND -> "💨"
+                    RadarLayer.TEMPERATURE -> "🌡️"
+                    RadarLayer.CLOUDS -> "☁️"
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(if (isSelected) Color(0x3338BDF8) else Color.Transparent)
                         .clickable { onSelectLayer(layerItem) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Text(text = iconStr, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = layerItem.titleVi,
                         color = if (isSelected) Color(0xFF38BDF8) else Color.White,

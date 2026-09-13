@@ -58,16 +58,17 @@ fun ForecastScreen(
     val uiState by viewModel.uiState.collectAsState()
     val expandedIndex by viewModel.expandedForecastIndex.collectAsState()
 
+    val weatherSuccess = (uiState as? WeatherUiState.Success)?.weather
+
     val (currentTemp, currentCond) = when (val state = uiState) {
         is WeatherUiState.Success -> Pair(state.weather.temperatureC, state.weather.description)
         else -> Pair(31.0, "Nắng đẹp")
     }
 
-    val forecastList = remember(currentTemp, currentCond) {
-        viewModel.getTenDayForecastList(currentTemp, currentCond)
+    val forecastList = remember(weatherSuccess, currentTemp, currentCond) {
+        viewModel.getTenDayForecastList(weatherSuccess, currentTemp, currentCond)
     }
 
-    val weatherSuccess = (uiState as? WeatherUiState.Success)?.weather
     val isNight = weatherSuccess?.iconCode?.endsWith("n") == true || weatherSuccess?.description?.lowercase()?.contains("đêm") == true
     val weatherCond = weatherSuccess?.let { WeatherCondition.fromDescription(it.description, isNight) } ?: WeatherCondition.fromDescription(currentCond, isNight)
     val windSpeed = weatherSuccess?.windSpeedMps ?: 5.0

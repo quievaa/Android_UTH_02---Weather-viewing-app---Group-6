@@ -8,6 +8,7 @@ import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.G
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.GeocodingResult
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OpenMeteoWeatherResponse
 import com.example.android_uth_02_weather_viewing_app_group6.data.repository.WeatherRepository
+import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherUiState
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherViewModel
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,7 @@ class LocationAndSearchUnitTest {
             latitude: Double,
             longitude: Double,
             current: String,
+            hourly: String,
             daily: String,
             forecastDays: Int,
             timezone: String,
@@ -90,12 +92,15 @@ class LocationAndSearchUnitTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        com.example.android_uth_02_weather_viewing_app_group6.domain.ai.AiWeatherAssistantEngine.globalEnableOnlineGemini = false
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+        com.example.android_uth_02_weather_viewing_app_group6.domain.ai.AiWeatherAssistantEngine.globalEnableOnlineGemini = true
     }
+
 
     @Test
     fun testWeatherRepository_getWeatherByCoordinates_success() = runTest {
@@ -198,5 +203,252 @@ class LocationAndSearchUnitTest {
         viewModel.updateWindUnit("km/h")
         assertEquals("km/h", viewModel.windUnit.value)
         assertEquals("12.6 km/h", viewModel.formatWindSpeed(3.5))
+    }
+
+    @Test
+    fun testFloodRiskEvaluator_hcmSevereRain_triggersSevereAlert() {
+        val severeWeather = CurrentWeather(
+            cityName = "TP. Hồ Chí Minh",
+            temperatureC = 26.0,
+            feelsLikeC = 27.0,
+            minTemperatureC = 24.0,
+            maxTemperatureC = 28.0,
+            description = "Mưa dông bão sấm sét",
+            weatherMain = "Thunderstorm",
+            humidityPercent = 95,
+            pressureHpa = 1005.0,
+            windSpeedMps = 8.5,
+            windDirectionDeg = 180,
+            latitude = 10.82,
+            longitude = 106.63,
+            iconCode = "11d"
+        )
+
+        val report = com.example.android_uth_02_weather_viewing_app_group6.data.location.FloodRiskEvaluator.evaluate(
+            severeWeather,
+            "TP. Hồ Chí Minh"
+        )
+
+        assertTrue(report.hasAlert)
+        assertEquals(com.example.android_uth_02_weather_viewing_app_group6.ui.model.FloodAlertLevel.SEVERE, report.level)
+        assertTrue(report.highRiskStreets.any { it.streetName.contains("Ung Văn Khiêm") })
+        assertTrue(report.highRiskStreets.any { it.isNearUthCampus })
+    }
+
+    @Test
+    fun testFloodRiskEvaluator_sunnyWeather_returnsSafe() {
+        val sunnyWeather = CurrentWeather(
+            cityName = "Đà Lạt",
+            temperatureC = 22.0,
+            feelsLikeC = 22.0,
+            minTemperatureC = 16.0,
+            maxTemperatureC = 24.0,
+            description = "Trời quang nắng ấm",
+            weatherMain = "Clear",
+            humidityPercent = 60,
+            pressureHpa = 1015.0,
+            windSpeedMps = 2.0,
+            windDirectionDeg = 90,
+            latitude = 11.94,
+            longitude = 108.45,
+            iconCode = "01d"
+        )
+
+        val report = com.example.android_uth_02_weather_viewing_app_group6.data.location.FloodRiskEvaluator.evaluate(
+            sunnyWeather,
+            "Đà Lạt"
+        )
+
+        assertFalse(report.hasAlert)
+        assertEquals(com.example.android_uth_02_weather_viewing_app_group6.ui.model.FloodAlertLevel.SAFE, report.level)
+        assertTrue(report.highRiskStreets.isEmpty())
+    }
+
+    @Test
+    fun testTripRoutingEngine_uthCampuses_resolvesCoordinates() = runTest {
+        val fakeOsrmApi = object : com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.OsrmApiService {
+            override suspend fun getDrivingRoute(
+                coordinates: String,
+                overview: String,
+                geometries: String,
+                steps: Boolean
+            ): retrofit2.Response<com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OsrmRouteResponse> {
+                return retrofit2.Response.success(
+                    com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OsrmRouteResponse(
+                        code = "Ok",
+                        routes = listOf(
+                            com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OsrmRoute(
+                                distance = 14500.0,
+                                duration = 1800.0,
+                                geometry = com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OsrmGeometry(
+                                    coordinates = listOf(
+                                        listOf(106.7135, 10.8037),
+                                        listOf(106.6346, 10.8690)
+                                    ),
+                                    type = "LineString"
+                                ),
+                                legs = null
+                            )
+                        ),
+                        waypoints = null
+                    )
+                )
+            }
+        }
+
+        val engine = com.example.android_uth_02_weather_viewing_app_group6.data.location.TripRoutingEngine(
+            osrmApi = fakeOsrmApi,
+            geocodingApi = fakeGeocodingApi
+        )
+
+        val cs1 = engine.resolveCoordinates("UTH Cơ sở 1")
+        val cs2 = engine.resolveCoordinates("UTH Cơ sở 2")
+        val cs3 = engine.resolveCoordinates("UTH Cơ sở 3")
+
+        assertEquals(10.8037, cs1?.latitude ?: 0.0, 0.001)
+        assertEquals(10.8690, cs2?.latitude ?: 0.0, 0.001)
+        assertEquals(10.7745, cs3?.latitude ?: 0.0, 0.001)
+
+        val routeResult = engine.calculateRoute(
+            originName = "UTH Cơ sở 1",
+            destinationName = "UTH Cơ sở 2",
+            vehicleType = "Xe máy"
+        )
+        assertTrue(routeResult.isSuccess)
+        val route = routeResult.getOrNull()
+        assertEquals(15, route?.distanceKm) // 14.5km rounded to 15km
+        assertEquals("Xe máy", route?.vehicleType)
+        assertTrue(route?.drivingAdvice?.contains("Xe máy") == true)
+        assertTrue(route?.waypoints?.isNotEmpty() == true)
+    }
+
+    @Test
+    fun testTripRoutingEngine_vehicleSpecificAdvice_changesByVehicle() {
+        val engine = com.example.android_uth_02_weather_viewing_app_group6.data.location.TripRoutingEngine(
+            osrmApi = object : com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.OsrmApiService {
+                override suspend fun getDrivingRoute(coordinates: String, overview: String, geometries: String, steps: Boolean) =
+                    retrofit2.Response.success(com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OsrmRouteResponse("Ok", null, null))
+            },
+            geocodingApi = fakeGeocodingApi
+        )
+
+        val bikeAdvice = engine.buildDrivingAdvice("Xe máy", hasSevereWarning = true, distanceKm = 100, durationText = "2 giờ")
+        val carAdvice = engine.buildDrivingAdvice("Ô tô", hasSevereWarning = true, distanceKm = 100, durationText = "2 giờ")
+
+        assertTrue(bikeAdvice.contains("áo mưa bộ") || bikeAdvice.contains("Xe máy"))
+        assertTrue(carAdvice.contains("trượt nước") || carAdvice.contains("aquaplaning") || carAdvice.contains("Ô tô"))
+    }
+
+    @Test
+    fun testTripRoutingEngine_myLocation_resolvesSuccessfully() = runTest {
+        val fakeOsrmApi = object : com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.OsrmApiService {
+            override suspend fun getDrivingRoute(coordinates: String, overview: String, geometries: String, steps: Boolean) =
+                retrofit2.Response.success(
+                    com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OsrmRouteResponse(
+                        code = "Ok",
+                        routes = listOf(
+                            com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OsrmRoute(
+                                distance = 300000.0,
+                                duration = 21600.0,
+                                geometry = com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OsrmGeometry(
+                                    coordinates = listOf(listOf(106.6297, 10.8231), listOf(108.4583, 11.9404)),
+                                    type = "LineString"
+                                ),
+                                legs = null
+                            )
+                        ),
+                        waypoints = null
+                    )
+                )
+        }
+
+        val engine = com.example.android_uth_02_weather_viewing_app_group6.data.location.TripRoutingEngine(
+            osrmApi = fakeOsrmApi,
+            geocodingApi = fakeGeocodingApi
+        )
+
+        // 1. When userLocation is passed explicitly
+        val customLoc = com.example.android_uth_02_weather_viewing_app_group6.ui.model.RouteGeoPoint(10.75, 106.66)
+        val resolvedWithLoc = engine.resolveCoordinates("Vị trí của tôi", customLoc)
+        assertEquals(10.75, resolvedWithLoc?.latitude ?: 0.0, 0.001)
+
+        // 2. When userLocation is null (fallback)
+        val resolvedWithoutLoc = engine.resolveCoordinates("Vị trí của tôi", null)
+        assertTrue("Should fallback instead of null", resolvedWithoutLoc != null)
+        assertEquals(10.8231, resolvedWithoutLoc?.latitude ?: 0.0, 0.001)
+
+        // 3. Full calculateRoute with "Vị trí của tôi" -> "Đà Lạt"
+        val routeResult = engine.calculateRoute(
+            originName = "Vị trí của tôi",
+            destinationName = "Đà Lạt",
+            vehicleType = "Ô tô",
+            userLocation = customLoc
+        )
+        assertTrue("Route calculation with 'Vị trí của tôi' must succeed", routeResult.isSuccess)
+        val route = routeResult.getOrNull()
+        assertEquals("Vị trí của tôi", route?.origin)
+        assertEquals("Đà Lạt", route?.destination)
+        assertEquals(300, route?.distanceKm)
+    }
+
+    @Test
+    fun testAiWeatherAssistantEngine_answersIntelligently() {
+        val engine = com.example.android_uth_02_weather_viewing_app_group6.domain.ai.AiWeatherAssistantEngine()
+        val mockWeather = com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather(
+            cityName = "TP. Hồ Chí Minh",
+            temperatureC = 31.0,
+            feelsLikeC = 34.0,
+            minTemperatureC = 26.0,
+            maxTemperatureC = 33.0,
+            description = "Mưa rào rải rác",
+            weatherMain = "Rain",
+            humidityPercent = 85,
+            pressureHpa = 1010.0,
+            windSpeedMps = 5.0,
+            windDirectionDeg = 180,
+            latitude = 10.8231,
+            longitude = 106.6297,
+            iconCode = "10d",
+            hourlyForecast = emptyList(),
+            dailyForecast = emptyList()
+        )
+
+        // 1. Rain question
+        val rainAnswer = engine.generateResponse("Hôm nay có mưa không?", mockWeather, null)
+        assertTrue(rainAnswer.contains("mưa", ignoreCase = true))
+
+        // 2. Clothing advice
+        val outfitAnswer = engine.generateResponse("Nên mặc gì ra ngoài?", mockWeather, null)
+        assertTrue(outfitAnswer.contains("trang phục", ignoreCase = true) || outfitAnswer.contains("mặc", ignoreCase = true))
+
+        // 3. Campus & flood check
+        val floodAnswer = engine.generateResponse("Tuyến đường cơ sở UTH Bình Thạnh có bị ngập không?", mockWeather, null)
+        assertTrue(floodAnswer.contains("UTH", ignoreCase = true) && floodAnswer.contains("ngập", ignoreCase = true))
+
+        // 4. Outdoor sports
+        val sportAnswer = engine.generateResponse("Có nên tập thể thao ngoài trời không?", mockWeather, null)
+        assertTrue(sportAnswer.contains("thể thao", ignoreCase = true) || sportAnswer.contains("ngoài trời", ignoreCase = true))
+    }
+
+    @Test
+    fun testWeatherViewModel_aiChatInteraction() = runTest {
+        val repository = WeatherRepository(fakeWeatherApi, fakeGeocodingApi)
+        val viewModel = WeatherViewModel(repository)
+
+        assertEquals(1, viewModel.chatMessages.value.size) // Welcome message
+        viewModel.sendChatMessage("Hôm nay nên mặc gì?")
+
+        // Initially thinking should be true, then complete after scheduler advances
+        assertEquals(2, viewModel.chatMessages.value.size) // Welcome + User query
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // After completion: Welcome + User query + AI reply
+        assertEquals(3, viewModel.chatMessages.value.size)
+        assertFalse(viewModel.isAiThinking.value)
+        assertFalse(viewModel.chatMessages.value.last().isUser)
+
+        // Test clearChat
+        viewModel.clearChat()
+        assertEquals(1, viewModel.chatMessages.value.size)
     }
 }

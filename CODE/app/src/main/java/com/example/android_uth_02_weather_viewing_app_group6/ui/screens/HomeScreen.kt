@@ -67,13 +67,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.FloodWarningCard
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.GlassCard
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.TemperatureRangeBar
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.VideoWeatherBackground
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.Weather3DBackground
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.WeatherIcon
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.CityLocation
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.DailyForecast
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.HourlyForecast
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.UrbanFloodReport
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WeatherCondition
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherUiState
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherViewModel
@@ -107,6 +110,7 @@ fun HomeScreen(
     val favoriteCities by viewModel.favoriteCities.collectAsState()
     val isCurrentLocation by viewModel.isCurrentLocation.collectAsState()
     val locationSubName by viewModel.locationSubName.collectAsState()
+    val floodReport by viewModel.floodReport.collectAsState()
 
     val reverseGeocoder = remember(context) { ReverseGeocoder(context) }
 
@@ -180,6 +184,8 @@ fun HomeScreen(
         }
     }
 
+    val weatherSuccess = (uiState as? WeatherUiState.Success)?.weather
+
     val (currentTemp, currentCond) = when (val state = uiState) {
         is WeatherUiState.Success -> Pair(state.weather.temperatureC, state.weather.description)
         else -> Pair(31.0, "Nắng đẹp")
@@ -190,14 +196,14 @@ fun HomeScreen(
         else -> false
     }
 
-val isVoiceSpeaking by viewModel.isVoiceSpeaking.collectAsState()
+    val isVoiceSpeaking by viewModel.isVoiceSpeaking.collectAsState()
     var showDriverModeSheet by remember { mutableStateOf(false) }
 
-    val hourlyList = remember(currentTemp, currentCond) {
-        viewModel.getHourlyForecastList(currentTemp, currentCond)
+    val hourlyList = remember(weatherSuccess, currentTemp, currentCond) {
+        viewModel.getHourlyForecastList(weatherSuccess, currentTemp, currentCond)
     }
-    val tenDayList = remember(currentTemp, currentCond) {
-        viewModel.getTenDayForecastList(currentTemp, currentCond)
+    val tenDayList = remember(weatherSuccess, currentTemp, currentCond) {
+        viewModel.getTenDayForecastList(weatherSuccess, currentTemp, currentCond)
     }
 
     HomeScreenContent(
@@ -210,6 +216,7 @@ val isVoiceSpeaking by viewModel.isVoiceSpeaking.collectAsState()
         availableCities = viewModel.availableCities,
         hourlyList = hourlyList,
         tenDayList = tenDayList,
+        floodReport = floodReport,
         tempFormatter = { viewModel.formatTemperature(it) },
         windFormatter = { viewModel.formatWindSpeed(it) },
         onForecastClick = onForecastClick,
@@ -243,6 +250,7 @@ fun HomeScreenContent(
     availableCities: List<CityLocation> = emptyList(),
     hourlyList: List<HourlyForecast> = emptyList(),
     tenDayList: List<DailyForecast> = emptyList(),
+    floodReport: UrbanFloodReport? = null,
     tempFormatter: (Double) -> String,
     windFormatter: (Double) -> String,
     onForecastClick: () -> Unit,
@@ -327,6 +335,13 @@ fun HomeScreenContent(
                                 onCityClick = { showCityDialog = true },
                                 tempFormatter = tempFormatter
                             )
+                        }
+
+                        // 1.5. Thẻ Cảnh báo Điểm ngập úng đô thị UTH (Flood & Tide Risk Alert)
+                        if (floodReport != null) {
+                            item {
+                                FloodWarningCard(report = floodReport)
+                            }
                         }
 
                         // 2. 24-Hour Hourly Forecast Strip

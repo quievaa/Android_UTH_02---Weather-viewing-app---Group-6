@@ -19,7 +19,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.android_uth_02_weather_viewing_app_group6.data.location.DefaultLocationTracker
 import com.example.android_uth_02_weather_viewing_app_group6.data.repository.AppPreferences
+import com.example.android_uth_02_weather_viewing_app_group6.domain.ai.AiCustomKnowledgeRepository
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.BottomFloatingNavBar
+import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.AiAssistantScreen
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.FavoriteScreen
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.ForecastScreen
 import com.example.android_uth_02_weather_viewing_app_group6.ui.screens.HomeScreen
@@ -55,9 +57,13 @@ fun MainWeatherScaffold(
     val context = LocalContext.current
     val locationTracker = remember(context) { DefaultLocationTracker(context) }
     val appPreferences = remember(context) { AppPreferences(context) }
+    val customKnowledgeRepo = remember(context) { AiCustomKnowledgeRepository(context.applicationContext) }
 
     val weatherViewModel: WeatherViewModel = viewModel(
-        factory = WeatherViewModelFactory(appPreferences = appPreferences),
+        factory = WeatherViewModelFactory(
+            appPreferences = appPreferences,
+            customKnowledgeRepo = customKnowledgeRepo
+        ),
     )
 
     val searchHistory by weatherViewModel.searchHistory.collectAsState()
@@ -83,6 +89,11 @@ fun MainWeatherScaffold(
                     onSearchClick = { onScreenSelected(WeatherScreen.Search) },
                     viewModel = weatherViewModel,
                     locationTracker = locationTracker
+                )
+
+                WeatherScreen.AiAssistant -> AiAssistantScreen(
+                    contentPadding = innerPadding,
+                    viewModel = weatherViewModel
                 )
 
                 WeatherScreen.Radar -> RadarScreen(

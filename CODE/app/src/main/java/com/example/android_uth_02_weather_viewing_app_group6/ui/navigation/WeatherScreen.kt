@@ -2,6 +2,7 @@ package com.example.android_uth_02_weather_viewing_app_group6.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.AltRoute
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
@@ -16,14 +17,15 @@ enum class WeatherScreen(
     val testTag: String
 ) {
     Home("Trang chủ", Icons.Outlined.Home, "nav_home"),
-    Radar("Radar", Icons.Outlined.Layers, "nav_radar"),
+    AiAssistant("Trợ lý AI", Icons.Filled.AutoAwesome, "nav_ai_assistant"),
     TripPlanner("Lộ trình", Icons.AutoMirrored.Outlined.AltRoute, "nav_trip_planner"),
     Forecast("Dự báo", Icons.Outlined.CalendarMonth, "nav_forecast"),
     Favorite("Yêu thích", Icons.Outlined.FavoriteBorder, "nav_favorite"),
     Search("Tìm kiếm", Icons.Outlined.Search, "nav_search"),
-    Settings("Cài đặt", Icons.Outlined.Settings, "nav_settings");
+    Settings("Cài đặt", Icons.Outlined.Settings, "nav_settings"),
+    Radar("Radar", Icons.Outlined.Layers, "nav_radar");
 
     // Helper property to check if tab is on bottom bar
     val isBottomNavTab: Boolean
-        get() = this != Search
+        get() = this != Search && this != Radar
 }

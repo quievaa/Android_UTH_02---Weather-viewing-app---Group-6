@@ -12,7 +12,13 @@ import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.O
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.OpenWeatherMapResponse
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.WeatherApiResponse
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.WttrInResponse
+import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.HourlyDto
+import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.DailyDto
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.DailyForecast
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.HourlyForecast
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WeatherCondition
+import java.util.Locale
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -139,6 +145,9 @@ class WeatherRepository(
                 return result
             } else {
                 lastError = result.exceptionOrNull()
+                if (lastError is IllegalArgumentException) {
+                    return result
+                }
             }
         }
 
@@ -465,12 +474,10 @@ class WeatherRepository(
             if (location != null) {
                 fetchOpenMeteoByCoords(location.latitude, location.longitude, cityName)
             } else {
-                // Fallback to Wttr.in for flexible global search
-                fetchWttrIn(cityName, "Open-Meteo (Wttr)")
+                Result.failure(IllegalArgumentException("Không tìm thấy thành phố: $cityName"))
             }
         } catch (e: Exception) {
-            // Fallback to Wttr.in on geocoding/network exceptions
-            fetchWttrIn(cityName, "Open-Meteo (Wttr)")
+            Result.failure(e)
         }
     }
 
@@ -572,7 +579,21 @@ class WeatherRepository(
             }
 
             val body = response.body() ?: return Result.failure(IllegalStateException("OpenWeatherMap rỗng"))
-            Result.success(body.toCurrentWeather(cityName))
+            val baseWeather = body.toCurrentWeather(cityName)
+            val finalWeather = if (baseWeather.latitude != null && baseWeather.longitude != null) {
+                try {
+                    val meteoRes = weatherApi.getCurrentWeather(baseWeather.latitude, baseWeather.longitude)
+                    if (meteoRes.isSuccessful && meteoRes.body() != null) {
+                        val mBody = meteoRes.body()!!
+                        baseWeather.copy(
+                            hourlyForecast = parseHourlyForecast(mBody.hourly),
+                            dailyForecast = parseDailyForecast(mBody.daily)
+                        )
+                    } else baseWeather
+                } catch (e: Exception) { baseWeather }
+            } else baseWeather
+
+            Result.success(finalWeather)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -596,7 +617,19 @@ class WeatherRepository(
             }
 
             val body = response.body() ?: return Result.failure(IllegalStateException("OpenWeatherMap rỗng"))
-            Result.success(body.toCurrentWeather(cityName ?: body.name ?: "Vị trí GPS"))
+            val baseWeather = body.toCurrentWeather(cityName ?: body.name ?: "Vị trí GPS")
+            val finalWeather = try {
+                val meteoRes = weatherApi.getCurrentWeather(latitude, longitude)
+                if (meteoRes.isSuccessful && meteoRes.body() != null) {
+                    val mBody = meteoRes.body()!!
+                    baseWeather.copy(
+                        hourlyForecast = parseHourlyForecast(mBody.hourly),
+                        dailyForecast = parseDailyForecast(mBody.daily)
+                    )
+                } else baseWeather
+            } catch (e: Exception) { baseWeather }
+
+            Result.success(finalWeather)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -844,6 +877,8 @@ class WeatherRepository(
         val code = current.weatherCode
         val min = daily?.minTemperature?.firstOrNull() ?: current.temperature
         val max = daily?.maxTemperature?.firstOrNull() ?: current.temperature
+        val hourlyList = parseHourlyForecast(hourly)
+        val dailyList = parseDailyForecast(daily)
 
         return CurrentWeather(
             cityName = location.name,
@@ -861,6 +896,8 @@ class WeatherRepository(
             longitude = longitude,
             iconCode = code.toString(),
             apiProvider = "Open-Meteo",
+            hourlyForecast = hourlyList,
+            dailyForecast = dailyList,
         )
     }
 
@@ -951,5 +988,132 @@ class WeatherRepository(
         in 71..77, 85, 86 -> "Snow"
         95, 96, 99 -> "Thunderstorm"
         else -> "Unknown"
+    }
+
+    private fun wmoCodeToCondition(code: Int, isNight: Boolean = false): WeatherCondition {
+        return when (code) {
+            0 -> if (isNight) WeatherCondition.NIGHT_CLEAR else WeatherCondition.SUNNY
+            1, 2 -> if (isNight) WeatherCondition.NIGHT_CLOUDY else WeatherCondition.PARTLY_CLOUDY
+            3 -> WeatherCondition.CLOUDY
+            45, 48 -> WeatherCondition.OVERCAST
+            51, 53, 55, 61, 80 -> WeatherCondition.LIGHT_RAIN
+            63, 65, 81 -> WeatherCondition.RAIN
+            66, 67, 82 -> WeatherCondition.HEAVY_RAIN
+            95, 96, 99 -> WeatherCondition.THUNDERSTORM
+            else -> if (isNight) WeatherCondition.NIGHT_CLEAR else WeatherCondition.SUNNY
+        }
+    }
+
+    private fun parseHourlyForecast(hourly: HourlyDto?): List<HourlyForecast> {
+        if (hourly == null || hourly.time.isNullOrEmpty() || hourly.temperature.isNullOrEmpty()) {
+            return emptyList()
+        }
+        val times = hourly.time
+        val temps = hourly.temperature
+        val codes = hourly.weatherCode ?: emptyList()
+        val pops = hourly.precipitationProbability ?: emptyList()
+
+        val currentHourStr = try {
+            val now = java.time.LocalDateTime.now()
+            String.format(Locale.US, "%04d-%02d-%02dT%02d:00", now.year, now.monthValue, now.dayOfMonth, now.hour)
+        } catch (e: Exception) { "" }
+
+        var startIndex = times.indexOfFirst { it >= currentHourStr }
+        if (startIndex < 0) startIndex = 0
+
+        val result = mutableListOf<HourlyForecast>()
+        val maxHours = minOf(startIndex + 24, times.size)
+
+        for (i in startIndex until maxHours) {
+            val isoTime = times[i]
+            val hourText = if (i == startIndex) {
+                "Bây giờ"
+            } else {
+                try {
+                    isoTime.substringAfter("T").take(5)
+                } catch (e: Exception) {
+                    isoTime
+                }
+            }
+            val tempVal = temps.getOrNull(i)?.toInt() ?: 28
+            val codeVal = codes.getOrNull(i) ?: 0
+            val popVal = pops.getOrNull(i) ?: 0
+            val isNightHour = try {
+                val h = isoTime.substringAfter("T").take(2).toIntOrNull() ?: 12
+                h < 6 || h >= 18
+            } catch (e: Exception) { false }
+
+            val condition = wmoCodeToCondition(codeVal, isNightHour)
+            result.add(HourlyForecast(hourText, tempVal, condition, popVal))
+        }
+        return result
+    }
+
+    private fun parseDailyForecast(daily: DailyDto?): List<DailyForecast> {
+        if (daily == null || daily.time.isNullOrEmpty() || daily.minTemperature.isNullOrEmpty() || daily.maxTemperature.isNullOrEmpty()) {
+            return emptyList()
+        }
+        val times = daily.time
+        val minTemps = daily.minTemperature
+        val maxTemps = daily.maxTemperature
+        val codes = daily.weatherCode ?: emptyList()
+        val pops = daily.precipitationProbabilityMax ?: emptyList()
+        val rainSums = daily.precipitationSum ?: emptyList()
+        val windMaxs = daily.windSpeedMax ?: emptyList()
+        val uvMaxs = daily.uvIndexMax ?: emptyList()
+
+        val result = mutableListOf<DailyForecast>()
+        val daysCount = minOf(times.size, minTemps.size, maxTemps.size)
+
+        val dayFormatter = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val displayFormat = java.text.SimpleDateFormat("EEEE", Locale.forLanguageTag("vi-VN"))
+
+        for (i in 0 until daysCount) {
+            val dateStr = times[i]
+            val minT = minTemps[i].toInt()
+            val maxT = maxTemps[i].toInt()
+            val code = codes.getOrNull(i) ?: 0
+            val pop = pops.getOrNull(i) ?: 10
+            val rainMm = rainSums.getOrNull(i)?.toInt() ?: 0
+            val windKmH = (windMaxs.getOrNull(i) ?: 15.0).toInt()
+            val uv = uvMaxs.getOrNull(i)?.toInt() ?: 6
+            val condition = wmoCodeToCondition(code, false)
+
+            val (dayName, dateText) = when (i) {
+                0 -> Pair("Hôm nay", "Hôm nay")
+                1 -> Pair("Ngày mai", "Ngày mai")
+                else -> {
+                    val parsedDate = try { dayFormatter.parse(dateStr) } catch (e: Exception) { null }
+                    val name = if (parsedDate != null) displayFormat.format(parsedDate).replaceFirstChar { it.uppercase() } else "Ngày ${i + 1}"
+                    Pair(name, "$i ngày tới")
+                }
+            }
+
+            val summary = when {
+                code in listOf(95, 96, 99) -> "Cảnh báo mưa dông kèm sấm sét, gió giật mạnh. Cần chú ý an toàn."
+                code in listOf(61, 63, 65, 80, 81, 82) -> "Có mưa rào trong ngày, khả năng mưa ${pop}%. Nên mang theo áo mưa."
+                code in listOf(1, 2) -> "Thời tiết đẹp, trời nắng nhẹ có mây, nhiệt độ dao động $minT°C - $maxT°C."
+                code == 0 -> "Trời nắng rực rỡ cả ngày, chỉ số UV cao vào giữa trưa."
+                else -> "Trời nhiều mây, thời tiết mát mẻ, nhiệt độ từ $minT°C đến $maxT°C."
+            }
+
+            result.add(
+                DailyForecast(
+                    dayName = dayName,
+                    dateText = dateText,
+                    minTemp = minT,
+                    maxTemp = maxT,
+                    condition = condition,
+                    pop = pop,
+                    summary = summary,
+                    windSpeedKmH = windKmH,
+                    humidityPercent = 70,
+                    rainfallMm = rainMm,
+                    uvIndex = uv,
+                    airQualityIndex = 40
+                )
+            )
+        }
+        return result
     }
 }

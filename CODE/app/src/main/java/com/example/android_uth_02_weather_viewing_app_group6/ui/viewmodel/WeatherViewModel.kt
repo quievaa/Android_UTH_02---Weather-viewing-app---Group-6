@@ -18,8 +18,19 @@ import com.example.android_uth_02_weather_viewing_app_group6.ui.model.TripRoute
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.UVIndex
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WeatherCondition
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.WindInfo
+import com.example.android_uth_02_weather_viewing_app_group6.data.location.FloodRiskEvaluator
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.UrbanFloodReport
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.ApiConfig
 import com.example.android_uth_02_weather_viewing_app_group6.data.remote.model.ApiHealthStatus
+import com.example.android_uth_02_weather_viewing_app_group6.data.location.TripRoutingEngine
+import com.example.android_uth_02_weather_viewing_app_group6.data.remote.api.RetrofitClient
+import com.example.android_uth_02_weather_viewing_app_group6.domain.ai.AiCustomKnowledgeRepository
+import com.example.android_uth_02_weather_viewing_app_group6.domain.ai.AiWeatherAssistantEngine
+import com.example.android_uth_02_weather_viewing_app_group6.domain.ai.CustomKnowledgeItem
+import com.example.android_uth_02_weather_viewing_app_group6.domain.ai.WeatherIntent
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.ChatMessage
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.RouteGeoPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +53,12 @@ sealed interface WeatherUiState {
 class WeatherViewModel(
     private val repository: WeatherRepository,
     private val appPreferences: AppPreferences? = null,
+    private val tripRoutingEngine: TripRoutingEngine = TripRoutingEngine(
+        RetrofitClient.osrmApi,
+        RetrofitClient.geocodingApi,
+        RetrofitClient.weatherApi
+    ),
+    private val customKnowledgeRepo: AiCustomKnowledgeRepository? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
@@ -131,6 +148,20 @@ class WeatherViewModel(
     private var lastCity: String = "Ho Chi Minh"
     private var lastCoordinates: Pair<Double, Double>? = null
 
+    // Cảnh báo ngập úng đô thị UTH
+    val floodReport: StateFlow<UrbanFloodReport> = _uiState
+        .map { state ->
+            when (state) {
+                is WeatherUiState.Success -> FloodRiskEvaluator.evaluate(state.weather, state.weather.cityName)
+                else -> FloodRiskEvaluator.evaluate(null, lastCity)
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = FloodRiskEvaluator.evaluate(null, "Ho Chi Minh")
+        )
+
     // Radar State (Zoom level 4 to 16 for OpenStreetMap)
     private val _radarZoom = MutableStateFlow(10.0f)
     val radarZoom: StateFlow<Float> = _radarZoom.asStateFlow()
@@ -158,8 +189,107 @@ class WeatherViewModel(
     private val _voiceStatusMessage = MutableStateFlow<String?>(null)
     val voiceStatusMessage: StateFlow<String?> = _voiceStatusMessage.asStateFlow()
 
+    // --- Trợ lý AI Thời tiết UTH ---
+    private val aiAssistantEngine = AiWeatherAssistantEngine(customKnowledgeRepo)
+    private val _chatMessages = MutableStateFlow<List<ChatMessage>>(
+        listOf(
+            ChatMessage(
+                text = "Xin chào! 👋 Tôi là Trợ lý Thời tiết AI thông minh của Trường ĐH Giao thông vận tải TP.HCM (UTH).\n\nTôi đã được huấn luyện hơn 25+ chủ đề thời tiết, ngập úng UTH, tư vấn trang phục, phơi đồ, rửa xe, thể thao và sức khỏe. Bạn cần hỗ trợ gì hôm nay?",
+                isUser = false,
+                tags = listOf("UTH AI", "Trợ lý ảo")
+            )
+        )
+    )
+    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
+
+    private val _isAiThinking = MutableStateFlow(false)
+    val isAiThinking: StateFlow<Boolean> = _isAiThinking.asStateFlow()
+
+    private val _customKnowledgeList = MutableStateFlow<List<CustomKnowledgeItem>>(
+        customKnowledgeRepo?.getAll() ?: emptyList()
+    )
+    val customKnowledgeList: StateFlow<List<CustomKnowledgeItem>> = _customKnowledgeList.asStateFlow()
+
+    private val _currentSuggestionChips = MutableStateFlow<List<String>>(
+        listOf("Hôm nay có mưa không?", "Mặc gì hôm nay?", "Đường UTH có ngập không?", "Chỉ số UV & Không khí?", "Có nên phơi đồ không?")
+    )
+    val currentSuggestionChips: StateFlow<List<String>> = _currentSuggestionChips.asStateFlow()
+
+    fun teachAi(question: String, answer: String) {
+        val repo = customKnowledgeRepo ?: return
+        val item = repo.addKnowledge(question, answer)
+        _customKnowledgeList.value = repo.getAll()
+        val noticeMessage = ChatMessage(
+            text = "🎓 **Đã nạp kiến thức mới thành công!**\n\n• **Câu hỏi:** \"${item.question}\"\n• **Câu trả lời:** \"${item.answer}\"\n\nTừ bây giờ, khi bạn hỏi câu này hoặc các câu tương tự, tôi sẽ trả lời chính xác theo nội dung bạn đã dạy!",
+            isUser = false,
+            tags = listOf("Huấn luyện AI")
+        )
+        _chatMessages.value = _chatMessages.value + noticeMessage
+    }
+
+    fun deleteCustomKnowledge(id: String) {
+        val repo = customKnowledgeRepo ?: return
+        repo.deleteKnowledge(id)
+        _customKnowledgeList.value = repo.getAll()
+    }
+
+    fun refreshCustomKnowledge() {
+        _customKnowledgeList.value = customKnowledgeRepo?.getAll() ?: emptyList()
+    }
+
+    fun sendChatMessage(prompt: String) {
+        val trimmed = prompt.trim()
+        if (trimmed.isBlank() || _isAiThinking.value) return
+
+        val userMessage = ChatMessage(
+            text = trimmed,
+            isUser = true
+        )
+        _chatMessages.value = _chatMessages.value + userMessage
+        _isAiThinking.value = true
+
+        viewModelScope.launch {
+            // Hiệu ứng suy nghĩ tự nhiên
+            delay(400)
+
+            val currentWeather = (_uiState.value as? WeatherUiState.Success)?.weather
+            val output = aiAssistantEngine.processQueryWithGemini(
+                prompt = trimmed,
+                currentWeather = currentWeather,
+                floodReport = floodReport.value
+            )
+
+            val tags = when {
+                output.isCustomKnowledge -> listOf("Kiến thức tùy chỉnh")
+                output.isGemini -> listOf("Gemini 3.5 AI", output.detectedIntent.displayName)
+                else -> listOf("UTH AI Offline", output.detectedIntent.displayName)
+            }
+
+            val aiMessage = ChatMessage(
+                text = output.responseText,
+                isUser = false,
+                tags = tags
+            )
+            _chatMessages.value = _chatMessages.value + aiMessage
+            _currentSuggestionChips.value = output.followUpSuggestions
+            _isAiThinking.value = false
+
+        }
+    }
+
+    fun clearChat() {
+        _chatMessages.value = listOf(
+            ChatMessage(
+                text = "Cuộc trò chuyện đã được làm mới. Bạn muốn hỏi gì về thời tiết hoặc các tuyến đường UTH?",
+                isUser = false,
+                tags = listOf("UTH AI")
+            )
+        )
+        _currentSuggestionChips.value = listOf("Hôm nay có mưa không?", "Mặc gì hôm nay?", "Đường UTH có ngập không?", "Chỉ số UV & Không khí?", "Có nên phơi đồ không?")
+    }
+
     // Trip Planner State
-    val availableTrips: List<TripRoute> = listOf(
+    private val initialTrips: List<TripRoute> = listOf(
         TripRoute(
             id = "trip_1",
             origin = "TP. Hồ Chí Minh",
@@ -179,7 +309,9 @@ class WeatherViewModel(
                     condition = WeatherCondition.SUNNY,
                     windSpeed = "12 km/h",
                     visibility = "10 km",
-                    rainAmount = "0 mm"
+                    rainAmount = "0 mm",
+                    latitude = 10.7769,
+                    longitude = 106.7009
                 ),
                 RouteWaypoint(
                     time = "12:15",
@@ -189,7 +321,9 @@ class WeatherViewModel(
                     condition = WeatherCondition.PARTLY_CLOUDY,
                     windSpeed = "14 km/h",
                     visibility = "10 km",
-                    rainAmount = "0 mm"
+                    rainAmount = "0 mm",
+                    latitude = 10.9167,
+                    longitude = 107.1667
                 ),
                 RouteWaypoint(
                     time = "14:45",
@@ -202,7 +336,9 @@ class WeatherViewModel(
                     warningDesc = "Mặt đường trơn trượt, dốc quanh co nguy hiểm. Giảm tốc độ < 30km/h.",
                     windSpeed = "28 km/h",
                     visibility = "300 m",
-                    rainAmount = "24 mm"
+                    rainAmount = "24 mm",
+                    latitude = 11.4500,
+                    longitude = 107.7167
                 ),
                 RouteWaypoint(
                     time = "16:30",
@@ -212,7 +348,9 @@ class WeatherViewModel(
                     condition = WeatherCondition.LIGHT_RAIN,
                     windSpeed = "16 km/h",
                     visibility = "6 km",
-                    rainAmount = "3 mm"
+                    rainAmount = "3 mm",
+                    latitude = 11.7333,
+                    longitude = 108.3667
                 ),
                 RouteWaypoint(
                     time = "17:30",
@@ -222,7 +360,9 @@ class WeatherViewModel(
                     condition = WeatherCondition.CLOUDY,
                     windSpeed = "15 km/h",
                     visibility = "8 km",
-                    rainAmount = "0.5 mm"
+                    rainAmount = "0.5 mm",
+                    latitude = 11.9404,
+                    longitude = 108.4583
                 )
             )
         ),
@@ -245,7 +385,9 @@ class WeatherViewModel(
                     condition = WeatherCondition.SUNNY,
                     windSpeed = "10 km/h",
                     visibility = "10 km",
-                    rainAmount = "0 mm"
+                    rainAmount = "0 mm",
+                    latitude = 16.0544,
+                    longitude = 108.2022
                 ),
                 RouteWaypoint(
                     time = "08:50",
@@ -255,7 +397,9 @@ class WeatherViewModel(
                     condition = WeatherCondition.PARTLY_CLOUDY,
                     windSpeed = "22 km/h",
                     visibility = "10 km",
-                    rainAmount = "0 mm"
+                    rainAmount = "0 mm",
+                    latitude = 16.1878,
+                    longitude = 108.1311
                 ),
                 RouteWaypoint(
                     time = "09:30",
@@ -265,7 +409,9 @@ class WeatherViewModel(
                     condition = WeatherCondition.SUNNY,
                     windSpeed = "14 km/h",
                     visibility = "10 km",
-                    rainAmount = "0 mm"
+                    rainAmount = "0 mm",
+                    latitude = 16.2300,
+                    longitude = 108.0100
                 ),
                 RouteWaypoint(
                     time = "10:15",
@@ -275,14 +421,25 @@ class WeatherViewModel(
                     condition = WeatherCondition.PARTLY_CLOUDY,
                     windSpeed = "11 km/h",
                     visibility = "10 km",
-                    rainAmount = "0 mm"
+                    rainAmount = "0 mm",
+                    latitude = 16.4637,
+                    longitude = 107.5909
                 )
             )
         )
     )
 
-    private val _currentTrip = MutableStateFlow(availableTrips.first())
+    private val _availableTrips = MutableStateFlow(initialTrips)
+    val availableTrips: StateFlow<List<TripRoute>> = _availableTrips.asStateFlow()
+
+    private val _currentTrip = MutableStateFlow(initialTrips.first())
     val currentTrip: StateFlow<TripRoute> = _currentTrip.asStateFlow()
+
+    private val _isPlanningTrip = MutableStateFlow(false)
+    val isPlanningTrip: StateFlow<Boolean> = _isPlanningTrip.asStateFlow()
+
+    private val _tripPlanError = MutableStateFlow<String?>(null)
+    val tripPlanError: StateFlow<String?> = _tripPlanError.asStateFlow()
 
     private val _isNavigating = MutableStateFlow(false)
     val isNavigating: StateFlow<Boolean> = _isNavigating.asStateFlow()
@@ -616,8 +773,73 @@ class WeatherViewModel(
         _isNavigating.value = false
     }
 
-    // Helper functions to generate hourly and 10-day forecast based on current weather
-    fun getHourlyForecastList(baseTemp: Double, baseCondition: String): List<HourlyForecast> {
+    val currentUserLocation: RouteGeoPoint?
+        get() = lastCoordinates?.let { RouteGeoPoint(it.first, it.second) }
+            ?: (uiState.value as? WeatherUiState.Success)?.weather?.let { w ->
+                if (w.latitude != null && w.longitude != null) RouteGeoPoint(w.latitude, w.longitude) else null
+            }
+
+    /**
+     * Lập lộ trình tự do qua OSRM: người dùng nhập điểm đi và điểm đến tùy ý.
+     */
+    fun planCustomTrip(
+        origin: String,
+        destination: String,
+        vehicleType: String = _selectedVehicle.value,
+        departureTime: String = "Bây giờ",
+        userLocation: RouteGeoPoint? = null,
+        onComplete: (Boolean, String?) -> Unit = { _, _ -> }
+    ) {
+        viewModelScope.launch {
+            _isPlanningTrip.value = true
+            _tripPlanError.value = null
+
+            val effectiveUserLocation = userLocation
+                ?: currentUserLocation
+                ?: RouteGeoPoint(10.8231, 106.6297)
+
+            val result = tripRoutingEngine.calculateRoute(
+                originName = origin,
+                destinationName = destination,
+                vehicleType = vehicleType,
+                departureTimeText = departureTime,
+                userLocation = effectiveUserLocation
+            )
+
+            _isPlanningTrip.value = false
+            result.onSuccess { trip ->
+                _currentTrip.value = trip
+                _selectedVehicle.value = vehicleType
+                _isNavigating.value = false
+                _activeWaypointIndex.value = 0
+
+                val currentList = _availableTrips.value.toMutableList()
+                if (currentList.none { it.origin.equals(trip.origin, true) && it.destination.equals(trip.destination, true) }) {
+                    currentList.add(0, trip)
+                    _availableTrips.value = currentList
+                }
+                onComplete(true, null)
+            }.onFailure { err ->
+                val msg = err.message ?: "Không thể tạo lộ trình. Vui lòng kiểm tra lại địa danh."
+                _tripPlanError.value = msg
+                onComplete(false, msg)
+            }
+        }
+    }
+
+    fun clearTripPlanError() {
+        _tripPlanError.value = null
+    }
+
+    // Helper functions to generate hourly and 10-day forecast with real API data fallback
+    fun getHourlyForecastList(
+        weather: CurrentWeather? = null,
+        baseTemp: Double = 30.0,
+        baseCondition: String = "Nắng đẹp"
+    ): List<HourlyForecast> {
+        if (weather != null && weather.hourlyForecast.isNotEmpty()) {
+            return weather.hourlyForecast
+        }
         val cond = WeatherCondition.fromDescription(baseCondition)
         val tempInt = baseTemp.toInt()
         return listOf(
@@ -636,7 +858,17 @@ class WeatherViewModel(
         )
     }
 
-    fun getTenDayForecastList(baseTemp: Double, baseCondition: String): List<DailyForecast> {
+    fun getHourlyForecastList(baseTemp: Double, baseCondition: String): List<HourlyForecast> =
+        getHourlyForecastList(null, baseTemp, baseCondition)
+
+    fun getTenDayForecastList(
+        weather: CurrentWeather? = null,
+        baseTemp: Double = 30.0,
+        baseCondition: String = "Nắng đẹp"
+    ): List<DailyForecast> {
+        if (weather != null && weather.dailyForecast.isNotEmpty()) {
+            return weather.dailyForecast
+        }
         val cond = WeatherCondition.fromDescription(baseCondition)
         val t = baseTemp.toInt()
         return listOf(

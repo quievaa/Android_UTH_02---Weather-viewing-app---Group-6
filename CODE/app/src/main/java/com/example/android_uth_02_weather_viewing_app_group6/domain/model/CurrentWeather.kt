@@ -1,9 +1,8 @@
 package com.example.android_uth_02_weather_viewing_app_group6.domain.model
 
-/**
- * Model nghiệp vụ dùng cho giao diện Current Weather.
- * Không phụ thuộc vào cấu trúc JSON của nhà cung cấp API.
- */
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.DailyForecast
+import com.example.android_uth_02_weather_viewing_app_group6.ui.model.HourlyForecast
+
 data class CurrentWeather(
     val cityName: String,
     val temperatureC: Double,
@@ -20,4 +19,6 @@ data class CurrentWeather(
     val longitude: Double?,
     val iconCode: String?,
     val apiProvider: String = "Open-Meteo",
+    val hourlyForecast: List<HourlyForecast> = emptyList(),
+    val dailyForecast: List<DailyForecast> = emptyList(),
 )
