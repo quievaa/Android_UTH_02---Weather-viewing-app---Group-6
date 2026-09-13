@@ -27,6 +27,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import android.content.Context
+import com.example.android_uth_02_weather_viewing_app_group6.data.voice.VoiceWeatherAlertManager
+import com.example.android_uth_02_weather_viewing_app_group6.data.voice.VoiceWeatherBulletin
+import com.example.android_uth_02_weather_viewing_app_group6.data.voice.WeatherAdvisoryGenerator
 import java.util.Locale
 
 sealed interface WeatherUiState {
@@ -139,6 +143,20 @@ class WeatherViewModel(
 
     private val _selectedRadarLayer = MutableStateFlow(RadarLayer.PRECIPITATION)
     val selectedRadarLayer: StateFlow<RadarLayer> = _selectedRadarLayer.asStateFlow()
+
+    // Voice Weather Alerts & Driver Mode Assistant State
+    private var voiceAlertManager: VoiceWeatherAlertManager? = null
+    private val _isVoiceSpeaking = MutableStateFlow(false)
+    val isVoiceSpeaking: StateFlow<Boolean> = _isVoiceSpeaking.asStateFlow()
+
+    private val _voiceSpeechRate = MutableStateFlow(1.0f)
+    val voiceSpeechRate: StateFlow<Float> = _voiceSpeechRate.asStateFlow()
+
+    private val _currentVoiceBulletin = MutableStateFlow<VoiceWeatherBulletin?>(null)
+    val currentVoiceBulletin: StateFlow<VoiceWeatherBulletin?> = _currentVoiceBulletin.asStateFlow()
+
+    private val _voiceStatusMessage = MutableStateFlow<String?>(null)
+    val voiceStatusMessage: StateFlow<String?> = _voiceStatusMessage.asStateFlow()
 
     // Trip Planner State
     val availableTrips: List<TripRoute> = listOf(
@@ -940,5 +958,77 @@ class WeatherViewModel(
                 )
             }
         }
+    }
+
+    fun playVoiceAdvisory(context: Context, customSpeechRate: Float? = null) {
+        val currentWeather = when (val state = _uiState.value) {
+            is WeatherUiState.Success -> state.weather
+            else -> CurrentWeather(
+                cityName = lastCity,
+                temperatureC = 30.0,
+                feelsLikeC = 32.0,
+                minTemperatureC = 25.0,
+                maxTemperatureC = 33.0,
+                description = "Thời tiết bình thường",
+                weatherMain = "Clear",
+                humidityPercent = 70,
+                pressureHpa = 1012.0,
+                windSpeedMps = 3.5,
+                windDirectionDeg = null,
+                latitude = lastCoordinates?.first,
+                longitude = lastCoordinates?.second,
+                iconCode = "01d"
+            )
+        }
+
+        val bulletin = WeatherAdvisoryGenerator.generateBulletin(currentWeather)
+        _currentVoiceBulletin.value = bulletin
+
+        val rate = customSpeechRate ?: _voiceSpeechRate.value
+        _voiceSpeechRate.value = rate
+
+        if (voiceAlertManager == null) {
+            voiceAlertManager = VoiceWeatherAlertManager(context) { success, errorMsg ->
+                if (!success && errorMsg != null) {
+                    _voiceStatusMessage.value = errorMsg
+                    _isVoiceSpeaking.value = false
+                }
+            }
+        }
+
+        voiceAlertManager?.speak(
+            text = bulletin.fullSpeechScript,
+            speechRate = rate,
+            onStart = {
+                _isVoiceSpeaking.value = true
+                _voiceStatusMessage.value = null
+            },
+            onDone = {
+                _isVoiceSpeaking.value = false
+            },
+            onError = { errMsg ->
+                _isVoiceSpeaking.value = false
+                _voiceStatusMessage.value = errMsg
+            }
+        )
+    }
+
+    fun stopVoiceAdvisory() {
+        voiceAlertManager?.stop()
+        _isVoiceSpeaking.value = false
+    }
+
+    fun setVoiceSpeechRate(rate: Float, context: Context? = null) {
+        _voiceSpeechRate.value = rate
+        voiceAlertManager?.setSpeechRate(rate)
+        if (_isVoiceSpeaking.value && context != null) {
+            playVoiceAdvisory(context, rate)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        voiceAlertManager?.shutdown()
+        voiceAlertManager = null
     }
 }

@@ -24,11 +24,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.DriverModeSheet
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Compress
@@ -188,6 +190,9 @@ fun HomeScreen(
         else -> false
     }
 
+val isVoiceSpeaking by viewModel.isVoiceSpeaking.collectAsState()
+    var showDriverModeSheet by remember { mutableStateOf(false) }
+
     val hourlyList = remember(currentTemp, currentCond) {
         viewModel.getHourlyForecastList(currentTemp, currentCond)
     }
@@ -213,8 +218,17 @@ fun HomeScreen(
         onCitySelected = { city -> viewModel.loadCurrentWeather(city.name) },
         onUseCurrentLocation = requestGpsLocation,
         onRefresh = viewModel::retry,
-        onRetry = viewModel::retry
+        onRetry = viewModel::retry,
+        onDriverModeClick = { showDriverModeSheet = true },
+        isVoiceSpeaking = isVoiceSpeaking
     )
+
+    if (showDriverModeSheet) {
+        DriverModeSheet(
+            onDismissRequest = { showDriverModeSheet = false },
+            viewModel = viewModel
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -238,6 +252,8 @@ fun HomeScreenContent(
     onUseCurrentLocation: () -> Unit = {},
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
+    onDriverModeClick: () -> Unit = {},
+    isVoiceSpeaking: Boolean = false,
 ) {
     var showCityDialog by remember { mutableStateOf(false) }
 
@@ -275,7 +291,9 @@ fun HomeScreenContent(
                     HomeGlassTopBar(
                         onSearchClick = onSearchClick,
                         onCityPickerClick = { showCityDialog = true },
-                        onRefreshClick = onRefresh
+                        onRefreshClick = onRefresh,
+                        onDriverModeClick = onDriverModeClick,
+                        isVoiceSpeaking = isVoiceSpeaking
                     )
                 }
 
@@ -359,11 +377,13 @@ fun HomeScreenContent(
 private fun HomeGlassTopBar(
     onSearchClick: () -> Unit,
     onCityPickerClick: () -> Unit,
-    onRefreshClick: () -> Unit
+    onRefreshClick: () -> Unit,
+    onDriverModeClick: () -> Unit = {},
+    isVoiceSpeaking: Boolean = false
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Search trigger pill
@@ -379,21 +399,42 @@ private fun HomeGlassTopBar(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
                     tint = Color(0xCCFFFFFF),
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Tìm kiếm thành phố, địa điểm...",
+                    text = "Tìm kiếm...",
                     color = Color(0x99FFFFFF),
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     maxLines = 1
+                )
+            }
+        }
+
+        // Driver Mode Assistant icon button
+        GlassCard(
+            modifier = Modifier.size(48.dp),
+            cornerRadius = 24.dp,
+            backgroundColor = if (isVoiceSpeaking) Color(0xFF0284C7).copy(alpha = 0.5f) else Color(0x331E293B),
+            borderColor = if (isVoiceSpeaking) Color(0xFF38BDF8) else Color(0x3394A3B8),
+            onClick = onDriverModeClick
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DirectionsCar,
+                    contentDescription = "Trợ lý lái xe",
+                    tint = if (isVoiceSpeaking) Color(0xFF38BDF8) else Color(0xFFF1F5F9),
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
