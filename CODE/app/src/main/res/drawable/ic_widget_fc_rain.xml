@@ -1,0 +1,17 @@
+﻿<!-- Clean Forecast Rain -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+  <!-- Cloud -->
+  <path
+      android:pathData="M29,20 H9 C5.7,20 3,17.3 3,14 C3,11.1 5,8.8 7.9,8.3 C9,4.6 12.5,2 16.5,2 C21.3,2 25.2,5.6 25.5,10.3 C28,10.7 30,12.9 30,15.5 C30,18 28.1,20 25.6,20 H29 Z"
+      android:fillColor="#B0BEC5"/>
+  <!-- Raindrops -->
+  <path
+      android:pathData="M9,24 L7,30 M15,24 L13,30 M21,24 L19,30 M27,24 L25,30"
+      android:strokeWidth="2.2"
+      android:strokeColor="#90CAF9"
+      android:strokeLineCap="round"/>
+</vector>

@@ -1,0 +1,46 @@
+﻿<!-- Glowing 3D Sun Icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="56dp"
+    android:height="56dp"
+    android:viewportWidth="56"
+    android:viewportHeight="56">
+  <!-- Sun Glow Halo -->
+  <path
+      android:pathData="M28,28m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0">
+    <aapt:attr name="android:fillColor">
+      <gradient
+          android:centerX="28"
+          android:centerY="28"
+          android:gradientRadius="24"
+          android:type="radial">
+        <item android:color="#55FFB300" android:offset="0.0"/>
+        <item android:color="#22FF8F00" android:offset="0.6"/>
+        <item android:color="#00FFA000" android:offset="1.0"/>
+      </gradient>
+    </aapt:attr>
+  </path>
+  <!-- Sun Rays -->
+  <path
+      android:pathData="M28,4 L28,9 M28,47 L28,52 M4,28 L9,28 M47,28 L52,28 M11,11 L14.5,14.5 M41.5,41.5 L45,45 M11,45 L14.5,41.5 M41.5,14.5 L45,11"
+      android:strokeWidth="3.5"
+      android:strokeColor="#FFA000"
+      android:strokeLineCap="round"/>
+  <!-- Sun Core (3D Gradient) -->
+  <path
+      android:pathData="M28,28m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0">
+    <aapt:attr name="android:fillColor">
+      <gradient
+          android:startX="20"
+          android:startY="16"
+          android:endX="36"
+          android:endY="38"
+          android:type="linear">
+        <item android:color="#FFF9C4" android:offset="0.0"/>
+        <item android:color="#FFD54F" android:offset="0.3"/>
+        <item android:color="#FFB300" android:offset="0.7"/>
+        <item android:color="#FF8F00" android:offset="1.0"/>
+      </gradient>
+    </aapt:attr>
+  </path>
+</vector>

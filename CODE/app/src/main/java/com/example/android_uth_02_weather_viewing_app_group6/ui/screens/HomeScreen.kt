@@ -69,7 +69,7 @@ import androidx.compose.ui.unit.sp
 import com.example.android_uth_02_weather_viewing_app_group6.domain.model.CurrentWeather
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.GlassCard
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.TemperatureRangeBar
-import com.example.android_uth_02_weather_viewing_app_group6.ui.components.Weather3DBackground
+import com.example.android_uth_02_weather_viewing_app_group6.ui.components.VideoWeatherBackground
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.WeatherIcon
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.CityLocation
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.DailyForecast
@@ -79,16 +79,106 @@ import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.Weathe
 import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.WeatherViewModel
 import java.util.Locale
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.example.android_uth_02_weather_viewing_app_group6.data.location.LocationTracker
+
+import androidx.compose.material.icons.outlined.NearMe
+import androidx.compose.runtime.LaunchedEffect
+import com.example.android_uth_02_weather_viewing_app_group6.data.location.ReverseGeocoder
+
 @Composable
 fun HomeScreen(
     contentPadding: PaddingValues,
     onForecastClick: () -> Unit,
     onSearchClick: () -> Unit = {},
     viewModel: WeatherViewModel,
+    locationTracker: LocationTracker? = null
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val favoriteCities by viewModel.favoriteCities.collectAsState()
+    val isCurrentLocation by viewModel.isCurrentLocation.collectAsState()
+    val locationSubName by viewModel.locationSubName.collectAsState()
+
+    val reverseGeocoder = remember(context) { ReverseGeocoder(context) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineGranted || coarseGranted) {
+            if (locationTracker != null) {
+                Toast.makeText(context, "Đang lấy vị trí GPS hiện tại...", Toast.LENGTH_SHORT).show()
+                viewModel.fetchLocationWeather(locationTracker, reverseGeocoder) { success, msg ->
+                    if (!success) {
+                        Toast.makeText(context, msg ?: "Không thể lấy vị trí GPS", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } else {
+            Toast.makeText(
+                context,
+                "Ứng dụng cần quyền vị trí để lấy thời tiết GPS hiện tại.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    val requestGpsLocation = {
+        val hasFine = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasFine || hasCoarse) {
+            if (locationTracker != null) {
+                Toast.makeText(context, "Đang định vị địa điểm của bạn...", Toast.LENGTH_SHORT).show()
+                viewModel.fetchLocationWeather(locationTracker, reverseGeocoder) { success, msg ->
+                    if (!success) {
+                        Toast.makeText(context, msg ?: "Không thể lấy vị trí GPS", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } else {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    // Auto-request location once on launch if already granted
+    LaunchedEffect(Unit) {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission && locationTracker != null && !viewModel.hasAutoFetchedLocation) {
+            viewModel.hasAutoFetchedLocation = true
+            viewModel.fetchLocationWeather(locationTracker, reverseGeocoder)
+        }
+    }
 
     val (currentTemp, currentCond) = when (val state = uiState) {
         is WeatherUiState.Success -> Pair(state.weather.temperatureC, state.weather.description)
@@ -100,17 +190,23 @@ fun HomeScreen(
         else -> false
     }
 
-    val isVoiceSpeaking by viewModel.isVoiceSpeaking.collectAsState()
+val isVoiceSpeaking by viewModel.isVoiceSpeaking.collectAsState()
     var showDriverModeSheet by remember { mutableStateOf(false) }
 
-    val hourlyList = viewModel.getHourlyForecastList(currentTemp, currentCond)
-    val tenDayList = viewModel.getTenDayForecastList(currentTemp, currentCond)
+    val hourlyList = remember(currentTemp, currentCond) {
+        viewModel.getHourlyForecastList(currentTemp, currentCond)
+    }
+    val tenDayList = remember(currentTemp, currentCond) {
+        viewModel.getTenDayForecastList(currentTemp, currentCond)
+    }
 
     HomeScreenContent(
         contentPadding = contentPadding,
         uiState = uiState,
         isRefreshing = isRefreshing,
         isFavorite = isFav,
+        isCurrentLocation = isCurrentLocation,
+        locationSubName = locationSubName,
         availableCities = viewModel.availableCities,
         hourlyList = hourlyList,
         tenDayList = tenDayList,
@@ -120,6 +216,7 @@ fun HomeScreen(
         onSearchClick = onSearchClick,
         onToggleFavorite = { viewModel.toggleFavoriteForCurrentCity() },
         onCitySelected = { city -> viewModel.loadCurrentWeather(city.name) },
+        onUseCurrentLocation = requestGpsLocation,
         onRefresh = viewModel::retry,
         onRetry = viewModel::retry,
         onDriverModeClick = { showDriverModeSheet = true },
@@ -141,6 +238,8 @@ fun HomeScreenContent(
     uiState: WeatherUiState,
     isRefreshing: Boolean,
     isFavorite: Boolean = false,
+    isCurrentLocation: Boolean = false,
+    locationSubName: String = "",
     availableCities: List<CityLocation> = emptyList(),
     hourlyList: List<HourlyForecast> = emptyList(),
     tenDayList: List<DailyForecast> = emptyList(),
@@ -150,6 +249,7 @@ fun HomeScreenContent(
     onSearchClick: () -> Unit,
     onToggleFavorite: () -> Unit = {},
     onCitySelected: (CityLocation) -> Unit = {},
+    onUseCurrentLocation: () -> Unit = {},
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onDriverModeClick: () -> Unit = {},
@@ -166,12 +266,9 @@ fun HomeScreenContent(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Dynamic Interactive 3D Three.js Weather Simulation Background
-        Weather3DBackground(
-            condition = weatherCond,
-            isNight = isNight,
-            windSpeedMps = windSpeed,
-            temperatureC = currentTemp
+        // Dynamic Live Video Weather Background from Assets (Nắng, Mưa, Chuyển mưa, Mây bay)
+        VideoWeatherBackground(
+            condition = weatherCond
         )
 
         PullToRefreshBox(
@@ -224,6 +321,8 @@ fun HomeScreenContent(
                             HeroWeatherSection(
                                 weather = weather,
                                 isFavorite = isFavorite,
+                                isCurrentLocation = isCurrentLocation,
+                                locationSubName = locationSubName,
                                 onToggleFavorite = onToggleFavorite,
                                 onCityClick = { showCityDialog = true },
                                 tempFormatter = tempFormatter
@@ -261,6 +360,10 @@ fun HomeScreenContent(
                 currentCityName = (uiState as? WeatherUiState.Success)?.weather?.cityName ?: "TP. Hồ Chí Minh",
                 cities = availableCities,
                 onDismiss = { showCityDialog = false },
+                onUseCurrentLocation = {
+                    onUseCurrentLocation()
+                    showCityDialog = false
+                },
                 onSelect = { city ->
                     onCitySelected(city)
                     showCityDialog = false
@@ -384,12 +487,14 @@ private fun HomeGlassTopBar(
 private fun HeroWeatherSection(
     weather: CurrentWeather,
     isFavorite: Boolean,
+    isCurrentLocation: Boolean = false,
+    locationSubName: String = "",
     onToggleFavorite: () -> Unit,
     onCityClick: () -> Unit,
     tempFormatter: (Double) -> String
 ) {
     val favTint by animateColorAsState(
-        targetValue = if (isFavorite) Color(0xFFF43F5E) else Color(0xCCFFFFFF),
+        targetValue = if (isFavorite) Color(0xFFF43F5E) else Color(0x99FFFFFF),
         animationSpec = tween(250),
         label = "fav_tint"
     )
@@ -397,55 +502,73 @@ private fun HeroWeatherSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(top = 8.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // City Name Button + Favorite Bookmark Toggle Button
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+        // Top Location Header (iOS Apple Weather Style: Clean Large Title + Subtitle + Heart Button)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
         ) {
-            Row(
+            // Main City & Location Name (Center)
+            Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0x330F172A))
-                    .border(1.dp, Color(0x3394A3B8), RoundedCornerShape(20.dp))
+                    .align(Alignment.Center)
                     .clickable { onCityClick() }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
                     .testTag("home_city_selector"),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = Color(0xFF38BDF8),
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = weather.cityName,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = "Chọn địa điểm",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    if (isCurrentLocation) {
+                        Icon(
+                            imageVector = Icons.Outlined.Navigation,
+                            contentDescription = "Vị trí GPS",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = if (isCurrentLocation) "Vị trí của tôi" else weather.cityName,
+                        color = Color.White,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.5).sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = "Đổi thành phố",
+                        tint = Color(0x99FFFFFF),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Subtitle (District / City or Region)
+                val cleanSub = locationSubName.removePrefix("Vị trí của tôi • ").trim()
+                if (isCurrentLocation && cleanSub.isNotBlank() && cleanSub != "Vị trí của tôi") {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = cleanSub,
+                        color = Color(0xCCFFFFFF),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
-
-            // Heart Favorite Bookmark Toggle Button
+            // Favorite Bookmark Button (Top Right)
             Box(
                 modifier = Modifier
+                    .align(Alignment.CenterEnd)
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(if (isFavorite) Color(0x33F43F5E) else Color(0x330F172A))
-                    .border(1.dp, if (isFavorite) Color(0x66F43F5E) else Color(0x3394A3B8), CircleShape)
+                    .background(if (isFavorite) Color(0x33F43F5E) else Color(0x261E293B))
+                    .border(1.dp, if (isFavorite) Color(0x66F43F5E) else Color(0x2694A3B8), CircleShape)
                     .clickable { onToggleFavorite() }
                     .testTag("home_favorite_button"),
                 contentAlignment = Alignment.Center
@@ -459,22 +582,13 @@ private fun HeroWeatherSection(
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Large Weather Vector Icon
-        val weatherCond = WeatherCondition.fromDescription(weather.description)
-        WeatherIcon(
-            condition = weatherCond,
-            size = 80.dp
-        )
-
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Huge Main Temperature
+        // Huge Main Temperature (iOS style)
         Text(
             text = tempFormatter(weather.temperatureC),
             color = Color.White,
-            fontSize = 68.sp,
+            fontSize = 72.sp,
             fontWeight = FontWeight.Light,
             letterSpacing = (-2).sp
         )
@@ -539,7 +653,7 @@ private fun HourlyForecastCard(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                items(hourlyForecast) { item ->
+                items(items = hourlyForecast, key = { it.time }) { item ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -1106,6 +1220,7 @@ private fun CitySelectorDialog(
     currentCityName: String,
     cities: List<CityLocation>,
     onDismiss: () -> Unit,
+    onUseCurrentLocation: () -> Unit = {},
     onSelect: (CityLocation) -> Unit
 ) {
     AlertDialog(
@@ -1115,6 +1230,28 @@ private fun CitySelectorDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x220284C7))
+                        .clickable { onUseCurrentLocation() }
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MyLocation,
+                        contentDescription = "Vị trí hiện tại",
+                        tint = Color(0xFF38BDF8)
+                    )
+                    Text(
+                        text = "Sử dụng vị trí hiện tại (GPS)",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF38BDF8)
+                    )
+                }
+
                 cities.forEach { city ->
                     val isSelected = city.name.equals(currentCityName, ignoreCase = true)
                     Row(

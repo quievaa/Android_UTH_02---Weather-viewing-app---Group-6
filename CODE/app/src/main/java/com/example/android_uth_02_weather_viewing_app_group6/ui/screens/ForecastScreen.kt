@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -62,7 +63,9 @@ fun ForecastScreen(
         else -> Pair(31.0, "Nắng đẹp")
     }
 
-    val forecastList = viewModel.getTenDayForecastList(currentTemp, currentCond)
+    val forecastList = remember(currentTemp, currentCond) {
+        viewModel.getTenDayForecastList(currentTemp, currentCond)
+    }
 
     val weatherSuccess = (uiState as? WeatherUiState.Success)?.weather
     val isNight = weatherSuccess?.iconCode?.endsWith("n") == true || weatherSuccess?.description?.lowercase()?.contains("đêm") == true
@@ -128,8 +131,11 @@ fun ForecastScreen(
                 }
             }
 
-            // Accordion Items
-            itemsIndexed(forecastList) { index, forecast ->
+            // Accordion Items with stable keys
+            itemsIndexed(
+                items = forecastList,
+                key = { index: Int, forecast: DailyForecast -> "${forecast.dayName}_$index" }
+            ) { index: Int, forecast: DailyForecast ->
                 val isExpanded = expandedIndex == index
                 ForecastAccordionCard(
                     forecast = forecast,

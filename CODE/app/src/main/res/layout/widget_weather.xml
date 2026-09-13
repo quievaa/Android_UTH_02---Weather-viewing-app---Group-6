@@ -1,0 +1,304 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <!-- 1. Header: Location + City Name + Search + Refresh -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_widget_city"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="📍 Ho Chi Minh"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <ImageView
+            android:id="@+id/btn_widget_search"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:padding="2dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_widget_search_white"
+            android:contentDescription="Search" />
+
+        <ImageView
+            android:id="@+id/btn_widget_refresh"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="6dp"
+            android:padding="2dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_widget_refresh_white"
+            android:contentDescription="Refresh" />
+    </LinearLayout>
+
+    <!-- 2. Mid Section: Clock, Date, Temp, Condition (Left) + Weather Icon (Right) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp">
+
+        <!-- Left Information Column -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Real-time Digital Clock -->
+            <TextClock
+                android:id="@+id/tc_widget_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="HH:mm"
+                android:format24Hour="HH:mm"
+                android:includeFontPadding="false"
+                android:textColor="#FFFFFF"
+                android:textSize="28sp"
+                android:fontFamily="sans-serif-light" />
+
+            <!-- Real-time Date -->
+            <TextClock
+                android:id="@+id/tc_widget_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:format12Hour="EEE - MMM d"
+                android:format24Hour="EEE - MMM d"
+                android:includeFontPadding="false"
+                android:textColor="#B0C8E0"
+                android:textSize="11.5sp"
+                android:fontFamily="sans-serif-medium" />
+
+            <!-- Current Temperature & Condition (No clipping) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_widget_temp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:text="28°C"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_widget_condition"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:includeFontPadding="false"
+                    android:text="Mây rải rác"
+                    android:textColor="#D2E4F6"
+                    android:textSize="12sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Right: Native Dynamic Weather Icon -->
+        <ImageView
+            android:id="@+id/iv_widget_icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_widget_partly_cloudy"
+            android:contentDescription="Weather Icon" />
+    </LinearLayout>
+
+    <!-- 3. Glass Thin Divider Line -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="4dp"
+        android:background="#26FFFFFF"
+        android:contentDescription="Divider" />
+
+    <!-- 4. Bottom Section: 4-Day Forecast Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- Column 1: WED -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_forecast_day1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="H.NAY"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/iv_forecast_icon1"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:src="@drawable/ic_widget_fc_sun"
+                android:contentDescription="Forecast Icon 1" />
+
+            <TextView
+                android:id="@+id/tv_forecast_temp1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="31°/25°"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Column 2: THU -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_forecast_day2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="T.HAI"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/iv_forecast_icon2"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:src="@drawable/ic_widget_fc_rain"
+                android:contentDescription="Forecast Icon 2" />
+
+            <TextView
+                android:id="@+id/tv_forecast_temp2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="30°/25°"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Column 3: FRI -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_forecast_day3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="T.BA"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/iv_forecast_icon3"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:src="@drawable/ic_widget_fc_thunder"
+                android:contentDescription="Forecast Icon 3" />
+
+            <TextView
+                android:id="@+id/tv_forecast_temp3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="28°/23°"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Column 4: SAT -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_forecast_day4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="T.TƯ"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/iv_forecast_icon4"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:src="@drawable/ic_widget_fc_heavy_rain"
+                android:contentDescription="Forecast Icon 4" />
+
+            <TextView
+                android:id="@+id/tv_forecast_temp4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="32°/26°"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+    </LinearLayout>
+</LinearLayout>

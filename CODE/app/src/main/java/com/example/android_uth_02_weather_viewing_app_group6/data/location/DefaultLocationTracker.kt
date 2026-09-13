@@ -50,6 +50,13 @@ class DefaultLocationTracker(
         return suspendCancellableCoroutine { continuation ->
             val cancellationTokenSource = CancellationTokenSource()
 
+            fun fallbackToLocationManager() {
+                val fallbackLoc = getSystemLocationFallback(locationManager)
+                if (continuation.isActive) {
+                    continuation.resume(fallbackLoc)
+                }
+            }
+
             locationClient.getCurrentLocation(
                 Priority.PRIORITY_HIGH_ACCURACY,
                 cancellationTokenSource.token
@@ -57,28 +64,44 @@ class DefaultLocationTracker(
                 if (location != null) {
                     if (continuation.isActive) continuation.resume(location)
                 } else {
-                    // Fallback to lastLocation if current location is null
                     locationClient.lastLocation
                         .addOnSuccessListener { lastLoc: Location? ->
-                            if (continuation.isActive) {
-                                continuation.resume(lastLoc)
+                            if (lastLoc != null) {
+                                if (continuation.isActive) continuation.resume(lastLoc)
+                            } else {
+                                fallbackToLocationManager()
                             }
                         }
                         .addOnFailureListener {
-                            if (continuation.isActive) {
-                                continuation.resume(null)
-                            }
+                            fallbackToLocationManager()
                         }
                 }
             }.addOnFailureListener {
-                if (continuation.isActive) {
-                    continuation.resume(null)
-                }
+                fallbackToLocationManager()
             }
 
             continuation.invokeOnCancellation {
                 cancellationTokenSource.cancel()
             }
         }
+    }
+
+    private fun getSystemLocationFallback(locationManager: LocationManager): Location? {
+        val providers = listOf(
+            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.PASSIVE_PROVIDER
+        )
+        for (provider in providers) {
+            try {
+                if (locationManager.isProviderEnabled(provider)) {
+                    val loc = locationManager.getLastKnownLocation(provider)
+                    if (loc != null) return loc
+                }
+            } catch (_: SecurityException) {
+            } catch (_: Exception) {
+            }
+        }
+        return null
     }
 }

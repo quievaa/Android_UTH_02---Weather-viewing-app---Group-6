@@ -82,11 +82,13 @@ fun MainWeatherScaffold(
                     onForecastClick = { onScreenSelected(WeatherScreen.Forecast) },
                     onSearchClick = { onScreenSelected(WeatherScreen.Search) },
                     viewModel = weatherViewModel,
+                    locationTracker = locationTracker
                 )
 
                 WeatherScreen.Radar -> RadarScreen(
                     contentPadding = innerPadding,
-                    viewModel = weatherViewModel
+                    viewModel = weatherViewModel,
+                    locationTracker = locationTracker
                 )
 
                 WeatherScreen.TripPlanner -> TripPlannerScreen(

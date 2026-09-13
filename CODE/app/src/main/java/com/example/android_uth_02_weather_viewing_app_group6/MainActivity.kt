@@ -22,11 +22,11 @@ class MainActivity : ComponentActivity() {
         tileCache.mkdirs()
 
         Configuration.getInstance().apply {
+            load(applicationContext, getSharedPreferences("osmdroid", MODE_PRIVATE))
             osmdroidBasePath = basePath
             osmdroidTileCache = tileCache
-            userAgentValue = "Mozilla/5.0 (Linux; Android 14) WeatherViewingApp/1.0 (group6@uth.edu.vn)"
-            userAgentHttpHeader = "Mozilla/5.0 (Linux; Android 14) WeatherViewingApp/1.0 (group6@uth.edu.vn)"
-            load(applicationContext, getSharedPreferences("osmdroid", MODE_PRIVATE))
+            userAgentValue = packageName
+            userAgentHttpHeader = "User-Agent"
         }
 
         enableEdgeToEdge()

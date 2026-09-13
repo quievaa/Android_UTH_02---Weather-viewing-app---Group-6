@@ -18,6 +18,7 @@ import com.example.android_uth_02_weather_viewing_app_group6.ui.model.RadarLayer
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.MapTileProviderBasic
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.util.MapTileIndex
@@ -28,15 +29,14 @@ import org.osmdroid.views.overlay.TilesOverlay
 import java.io.File
 
 val OPENWEATHER_BASE_MAP_SOURCE = XYTileSource(
-    "CartoVoyager",
+    "OSMHot",
     0, 19, 256, ".png",
     arrayOf(
-        "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
-        "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
-        "https://c.basemaps.cartocdn.com/rastertiles/voyager/",
-        "https://d.basemaps.cartocdn.com/rastertiles/voyager/"
+        "https://a.tile.openstreetmap.fr/hot/",
+        "https://b.tile.openstreetmap.fr/hot/",
+        "https://c.tile.openstreetmap.fr/hot/"
     ),
-    "© OpenStreetMap contributors, © OpenWeatherMap"
+    "© OpenStreetMap contributors"
 )
 
 @Composable
@@ -46,7 +46,7 @@ fun OsmdroidRadarMapView(
     cityName: String,
     selectedLayer: RadarLayer,
     zoomLevel: Float,
-    apiKey: String = "b1b15e88fa797225412429c1c50c122a1",
+    apiKey: String = "8aa0ba046904f17e164ed03a89638b37",
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -64,8 +64,8 @@ fun OsmdroidRadarMapView(
             load(ctx, prefs)
             osmdroidBasePath = basePath
             osmdroidTileCache = tileCache
-            userAgentValue = "Mozilla/5.0 (Linux; Android 14) WeatherViewingApp/1.0 (group6@uth.edu.vn)"
-            userAgentHttpHeader = "Mozilla/5.0 (Linux; Android 14) WeatherViewingApp/1.0 (group6@uth.edu.vn)"
+            userAgentValue = ctx.packageName
+            userAgentHttpHeader = "User-Agent"
         }
     }
 
@@ -112,11 +112,16 @@ fun OsmdroidRadarMapView(
         if (map != null) {
             val oldOverlay = weatherOverlayRef
             if (oldOverlay != null) {
-                map.overlays.remove(oldOverlay)
+                try {
+                    map.overlays.remove(oldOverlay)
+                    oldOverlay.onDetach(map)
+                } catch (_: Exception) {}
             }
 
             val tileSource = createWeatherTileSource(selectedLayer, apiKey)
-            val tileProvider = MapTileProviderBasic(context, tileSource)
+            val tileProvider = MapTileProviderBasic(context, tileSource).apply {
+                setTileRequestCompleteHandler(map.tileRequestCompleteHandler)
+            }
             val newOverlay = TilesOverlay(tileProvider, context).apply {
                 loadingBackgroundColor = AndroidColor.TRANSPARENT
                 loadingLineColor = AndroidColor.TRANSPARENT
@@ -148,7 +153,10 @@ fun OsmdroidRadarMapView(
                     controller.setCenter(centerPoint)
 
                     val tileSource = createWeatherTileSource(selectedLayer, apiKey)
-                    val tileProvider = MapTileProviderBasic(ctx, tileSource)
+                    val currentMap = this
+                    val tileProvider = MapTileProviderBasic(ctx, tileSource).apply {
+                        setTileRequestCompleteHandler(currentMap.tileRequestCompleteHandler)
+                    }
                     val weatherOverlay = TilesOverlay(tileProvider, ctx).apply {
                         loadingBackgroundColor = AndroidColor.TRANSPARENT
                         loadingLineColor = AndroidColor.TRANSPARENT
@@ -178,8 +186,14 @@ fun OsmdroidRadarMapView(
 
     DisposableEffect(Unit) {
         onDispose {
-            mapViewRef?.onPause()
-            mapViewRef?.onDetach()
+            try {
+                val map = mapViewRef
+                if (map != null) {
+                    weatherOverlayRef?.onDetach(map)
+                    map.onPause()
+                    map.onDetach()
+                }
+            } catch (_: Exception) {}
             mapViewRef = null
             weatherOverlayRef = null
             cityMarkerRef = null

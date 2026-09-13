@@ -1,0 +1,18 @@
+﻿<!-- Clean Forecast Thunder -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+  <!-- Dark Cloud -->
+  <path
+      android:pathData="M29,20 H9 C5.7,20 3,17.3 3,14 C3,11.1 5,8.8 7.9,8.3 C9,4.6 12.5,2 16.5,2 C21.3,2 25.2,5.6 25.5,10.3 C28,10.7 30,12.9 30,15.5 C30,18 28.1,20 25.6,20 H29 Z"
+      android:fillColor="#455A64"/>
+  <!-- Lightning Bolt -->
+  <path
+      android:pathData="M18,16 L12,24 L16,24 L13,33 L23,22 L18.5,22 Z"
+      android:fillColor="#29B6F6"/>
+  <path
+      android:pathData="M17.5,17 L13.5,23 L16,23 L14.5,30 L21,22.5 L18,22.5 Z"
+      android:fillColor="#FFFFFF"/>
+</vector>

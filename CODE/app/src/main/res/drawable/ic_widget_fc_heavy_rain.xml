@@ -1,0 +1,17 @@
+﻿<!-- Clean Forecast Heavy Rain -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+  <!-- Cloud -->
+  <path
+      android:pathData="M29,19 H9 C5.7,19 3,16.3 3,13 C3,10.1 5,7.8 7.9,7.3 C9,3.6 12.5,1 16.5,1 C21.3,1 25.2,4.6 25.5,9.3 C28,9.7 30,11.9 30,14.5 C30,17 28.1,19 25.6,19 H29 Z"
+      android:fillColor="#607D8B"/>
+  <!-- Heavy Rain Streams -->
+  <path
+      android:pathData="M8,22 L5,34 M13,22 L10,34 M18,22 L15,34 M23,22 L20,34 M28,22 L25,34"
+      android:strokeWidth="2.2"
+      android:strokeColor="#64B5F6"
+      android:strokeLineCap="round"/>
+</vector>

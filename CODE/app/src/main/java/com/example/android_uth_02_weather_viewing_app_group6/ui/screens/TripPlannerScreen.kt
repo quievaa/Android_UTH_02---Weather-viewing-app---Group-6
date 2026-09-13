@@ -128,7 +128,10 @@ fun TripPlannerScreen(
                 )
             }
 
-            itemsIndexed(currentTrip.waypoints) { index, waypoint ->
+            itemsIndexed(
+                items = currentTrip.waypoints,
+                key = { index: Int, waypoint: RouteWaypoint -> "${waypoint.locationName}_$index" }
+            ) { index: Int, waypoint: RouteWaypoint ->
                 WaypointTimelineItem(
                     waypoint = waypoint,
                     isFirst = index == 0,

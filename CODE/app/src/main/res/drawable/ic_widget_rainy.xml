@@ -1,0 +1,30 @@
+﻿<!-- Rain Cloud with Glowing Cyan Raindrops -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="56dp"
+    android:height="56dp"
+    android:viewportWidth="56"
+    android:viewportHeight="56">
+  <!-- Cloud -->
+  <path
+      android:pathData="M39,33 H15 C10,33 6,29 6,24 C6,19.5 9.4,15.8 13.8,15.1 C15.4,9.5 20.6,5.5 26.8,5.5 C34.1,5.5 40.1,11.2 40.7,18.3 C44.5,18.9 47.5,22.1 47.5,26 C47.5,29.9 43.6,33 39,33 Z">
+    <aapt:attr name="android:fillColor">
+      <gradient
+          android:startX="12"
+          android:startY="6"
+          android:endX="42"
+          android:endY="34"
+          android:type="linear">
+        <item android:color="#E0EDF8" android:offset="0.0"/>
+        <item android:color="#9EC0DF" android:offset="0.7"/>
+        <item android:color="#6B96C2" android:offset="1.0"/>
+      </gradient>
+    </aapt:attr>
+  </path>
+  <!-- Raindrops -->
+  <path
+      android:pathData="M16,38 L13,46 M26,38 L23,46 M36,38 L33,46"
+      android:strokeWidth="3.5"
+      android:strokeColor="#29B6F6"
+      android:strokeLineCap="round"/>
+</vector>

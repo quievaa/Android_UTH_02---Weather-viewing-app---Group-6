@@ -45,6 +45,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.example.android_uth_02_weather_viewing_app_group6.data.location.LocationTracker
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.GlassCard
 import com.example.android_uth_02_weather_viewing_app_group6.ui.components.OsmdroidRadarMapView
 import com.example.android_uth_02_weather_viewing_app_group6.ui.model.RadarLayer
@@ -54,8 +62,10 @@ import com.example.android_uth_02_weather_viewing_app_group6.ui.viewmodel.Weathe
 @Composable
 fun RadarScreen(
     contentPadding: PaddingValues,
-    viewModel: WeatherViewModel
+    viewModel: WeatherViewModel,
+    locationTracker: LocationTracker? = null
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val zoom by viewModel.radarZoom.collectAsState()
     val timeline by viewModel.radarTimelinePosition.collectAsState()
@@ -69,6 +79,67 @@ fun RadarScreen(
 
     var showLayerMenu by remember { mutableStateOf(false) }
     var recenterCounter by remember { mutableStateOf(0) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineGranted || coarseGranted) {
+            if (locationTracker != null) {
+                Toast.makeText(context, "Đang lấy vị trí GPS hiện tại...", Toast.LENGTH_SHORT).show()
+                viewModel.fetchLocationWeather(locationTracker) { success, msg ->
+                    if (success) {
+                        recenterCounter++
+                    } else {
+                        Toast.makeText(context, msg ?: "Không thể lấy vị trí GPS", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } else {
+            Toast.makeText(
+                context,
+                "Ứng dụng cần quyền vị trí để định vị GPS trên bản đồ.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    val requestGpsAndRecenter = {
+        val hasFine = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasFine || hasCoarse) {
+            if (locationTracker != null) {
+                Toast.makeText(context, "Đang lấy vị trí GPS hiện tại...", Toast.LENGTH_SHORT).show()
+                viewModel.fetchLocationWeather(locationTracker) { success, msg ->
+                    if (success) {
+                        recenterCounter++
+                    } else {
+                        Toast.makeText(context, msg ?: "Không thể lấy vị trí GPS", Toast.LENGTH_SHORT).show()
+                        recenterCounter++
+                    }
+                }
+            } else {
+                recenterCounter++
+            }
+        } else {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         key(recenterCounter, currentLat, currentLon) {
@@ -97,7 +168,7 @@ fun RadarScreen(
                     .clip(RoundedCornerShape(24.dp))
                     .background(Color(0xCC0E7490))
                     .border(1.dp, Color(0x6638BDF8), RoundedCornerShape(24.dp))
-                    .clickable { recenterCounter++ }
+                    .clickable { requestGpsAndRecenter() }
                     .padding(horizontal = 14.dp, vertical = 10.dp)
                     .testTag("radar_location_chip"),
                 verticalAlignment = Alignment.CenterVertically
@@ -172,7 +243,7 @@ fun RadarScreen(
             MapControlButton(
                 icon = Icons.Default.MyLocation,
                 contentDescription = "Căn giữa GPS",
-                onClick = { recenterCounter++ },
+                onClick = { requestGpsAndRecenter() },
                 testTag = "radar_recenter"
             )
         }

@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -218,12 +219,21 @@ fun SearchScreen(
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(
-                                    imageVector = Icons.Default.Clear,
-                                    contentDescription = "Xóa",
-                                    tint = Color.White
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Xóa",
+                                        tint = Color.White
+                                    )
+                                }
+                                IconButton(onClick = { performSearch(searchQuery) }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = "Xem thời tiết",
+                                        tint = Color(0xFF38BDF8)
+                                    )
+                                }
                             }
                         }
                     },
@@ -313,7 +323,7 @@ fun SearchScreen(
                     }
                 }
 
-                items(searchHistory) { itemCity ->
+                items(searchHistory, key = { "history_$it" }) { itemCity ->
                     GlassCard(
                         modifier = Modifier.fillMaxWidth(),
                         cornerRadius = 16.dp,
@@ -367,7 +377,7 @@ fun SearchScreen(
                 )
             }
 
-            items(filteredSuggestions) { city ->
+            items(filteredSuggestions, key = { "city_$it" }) { city ->
                 val isFav = favoriteCities.any { it.equals(city, ignoreCase = true) }
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),

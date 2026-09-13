@@ -1,0 +1,20 @@
+﻿<!-- Sun Frame 1 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="100dp"
+    android:viewportWidth="120"
+    android:viewportHeight="100">
+  <!-- Sun Core -->
+  <path
+      android:pathData="M70,45m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0"
+      android:fillColor="#FFA000"/>
+  <path
+      android:pathData="M70,45m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0"
+      android:fillColor="#FFD54F"/>
+  <!-- Sun Rays Short -->
+  <path
+      android:pathData="M70,14 L70,20 M70,70 L70,76 M39,45 L45,45 M95,45 L101,45 M48,23 L52,27 M88,63 L92,67 M48,67 L52,63 M88,27 L92,23"
+      android:strokeWidth="3.2"
+      android:strokeColor="#FFA000"
+      android:strokeLineCap="round"/>
+</vector>
